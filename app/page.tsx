@@ -43,27 +43,18 @@ export default function Home() {
     window.location.reload();
   };
 
-  const handleDeleteAd = async (id: number) => {
-    if (window.confirm('정말로 이 광고를 삭제하시겠습니까?')) {
-      await supabase.from('articles').delete().eq('id', id);
-      fetchData();
-    }
-  };
-
   const handleScrape = async () => {
     setIsScraping(true);
-    alert('🤖 로봇 기자가 타 언론사 뉴스를 수집합니다!\n잠시만 기다려주세요.');
+    alert('🤖 로봇 기자가 타 언론사 뉴스를 수집합니다!');
     try {
       const response = await fetch('/api/scrape');
       const result = await response.json();
       if (response.ok) {
         alert(`✅ 수집 완료! 중복을 제외하고 ${result.count}개의 새 기사를 가져왔습니다.`);
         fetchData();
-      } else {
-        alert('❌ 수집 중 문제가 발생했습니다.');
       }
     } catch (error) {
-      alert('❌ 서버와 연결할 수 없습니다.');
+      alert('❌ 실패');
     }
     setIsScraping(false);
   };
@@ -79,20 +70,29 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       <nav className="bg-blue-700 text-white p-4 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <a href="/" className="text-2xl font-black tracking-widest">🌊 BY NEWS</a>
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex flex-col">
+            {/* ⭐️ 슬로건이 포함된 새로운 로고 */}
+            <a href="/" className="text-2xl font-black tracking-tighter">🌊 BY NEWS</a>
+            <span className="text-[10px] md:text-xs font-bold text-blue-200">부산 청소년의 새로운 소식</span>
+          </div>
+          
+          <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-center">
+            {/* ⭐️ 일반 방문자용 제보 버튼 */}
+            <a href="/request" className="bg-yellow-400 text-blue-900 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-yellow-300 transition">📢 기사 제보하기</a>
+
             {isAdmin ? (
               <>
-                <button onClick={handleScrape} disabled={isScraping} className={`px-4 py-2 rounded-lg text-sm font-bold shadow transition ${isScraping ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600 text-white'}`}>
+                <button onClick={handleScrape} disabled={isScraping} className={`px-3 py-2 rounded-lg text-sm font-bold shadow transition ${isScraping ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600 text-white'}`}>
                   {isScraping ? '⏳ 수집 중...' : '🤖 타 언론사 수집'}
                 </button>
-                <a href="/write" className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-600 transition">✍️ 기사 쓰기</a>
-                <a href="/ad" className="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-600 transition">💸 광고 추가</a>
-                <button onClick={handleLogout} className="bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">로그아웃</button>
+                {/* ⭐️ 편집장 전용 제보 확인 버튼 */}
+                <a href="/admin/requests" className="bg-orange-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-orange-600 transition">📬 제보 확인</a>
+                <a href="/write" className="bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-600 transition">✍️ 기사 쓰기</a>
+                <button onClick={handleLogout} className="bg-white text-gray-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">로그아웃</button>
               </>
             ) : (
-              <a href="/write" className="bg-white text-blue-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">편집장 로그인</a>
+              <a href="/write" className="bg-white text-blue-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">편집장 로그인</a>
             )}
           </div>
         </div>
@@ -109,7 +109,6 @@ export default function Home() {
             <div className="flex flex-col space-y-2">
               <button onClick={() => setFilter('all')} className={`p-3 rounded-xl text-left font-bold transition ${filter === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>🌐 전체 기사 보기</button>
               <button onClick={() => setFilter('manual')} className={`p-3 rounded-xl text-left font-bold transition ${filter === 'manual' ? 'bg-red-500 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>🔥 BY NEWS 단독보도</button>
-              {/* ⭐️ 단어 수정 */}
               <button onClick={() => setFilter('scraped')} className={`p-3 rounded-xl text-left font-bold transition ${filter === 'scraped' ? 'bg-green-500 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>📰 타 언론사 기사</button>
             </div>
           </div>
@@ -117,7 +116,6 @@ export default function Home() {
 
         <section className="w-full md:w-2/4">
           <div className="flex justify-between items-end mb-6 border-b-4 border-blue-700 pb-2">
-            {/* ⭐️ 단어 수정 */}
             <h2 className="text-2xl font-extrabold text-gray-900">{filter === 'all' ? '최신 뉴스' : filter === 'manual' ? '단독 보도 뉴스' : '타 언론사 주요뉴스'}</h2>
             <span className="text-gray-500 font-bold text-sm">{filteredArticles.length}개의 기사</span>
           </div>
@@ -129,10 +127,7 @@ export default function Home() {
                 <a key={article.id} href={article.source_type === 'manual' ? `/article/${article.id}` : (article.original_link || '#')} target={article.source_type === 'manual' ? '_self' : '_blank'} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row overflow-hidden border border-gray-100 group">
                   <div className="w-full sm:w-1/3 h-48 sm:h-auto relative overflow-hidden">
                     <img src={article.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="기사 썸네일"/>
-                    {/* ⭐️ 배지 단어 수정 */}
-                    <div className={`absolute top-2 left-2 text-white text-xs font-bold px-2 py-1 rounded ${article.source_type === 'manual' ? 'bg-red-500' : 'bg-gray-700'}`}>
-                      {article.source_type === 'manual' ? '단독' : '타 언론사'}
-                    </div>
+                    <div className={`absolute top-2 left-2 text-white text-xs font-bold px-2 py-1 rounded ${article.source_type === 'manual' ? 'bg-red-500' : 'bg-gray-800'}`}>{article.source_type === 'manual' ? '단독' : '타 언론사'}</div>
                   </div>
                   <div className="p-5 flex-1 flex flex-col justify-between">
                     <div>
@@ -156,12 +151,6 @@ export default function Home() {
                   <img src={ad.thumbnail_url} alt="배너 광고" className="w-full h-full object-cover"/>
                   <div className="absolute top-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 m-1 rounded">AD</div>
                 </a>
-                {isAdmin && (
-                  <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-blue-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">수정</button>
-                    <button onClick={() => handleDeleteAd(ad.id)} className="bg-red-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">삭제</button>
-                  </div>
-                )}
               </div>
             ))}
             {Array.from({ length: Math.max(0, 3 - ads.length) }).map((_, i) => (
