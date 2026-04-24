@@ -1,64 +1,55 @@
 import { NextResponse } from 'next/server';
-import * as cheerio from 'cheerio';
 import { supabase } from '@/lib/supabase';
-
-// 캐시(기억) 무시하고 항상 최신 뉴스 가져오기
-export const dynamic = 'force-dynamic'; 
 
 export async function GET() {
   try {
-    // 1. 구글 뉴스 자판기(RSS)에서 '부산 청소년' 검색 결과 가져오기 (절대 안 막힘!)
-    const response = await fetch('https://news.google.com/rss/search?q=부산+청소년&hl=ko&gl=KR&ceid=KR:ko', {
-      cache: 'no-store'
-    });
-    
-    // HTML이 아니라 XML이라는 형식으로 데이터를 받아옵니다.
-    const xmlString = await response.text();
-
-    // 2. Cheerio 도구로 XML 분석 모드 켜기
-    const $ = cheerio.load(xmlString, { xmlMode: true });
-    const articles: any[] = [];
-
-    // 3. <item> 이라는 이름표를 단 기사 덩어리들을 하나씩 뽑아내기
-    $('item').each((index, element) => {
-      const title = $(element).find('title').text();
-      const original_link = $(element).find('link').text();
-      // 뉴스 자판기는 발행 시간도 정확하게 알려줍니다.
-      const published_at = new Date($(element).find('pubDate').text()).toISOString();
+    // ⭐️ 1. 우리 창고에 이미 저장된 '타 언론사 기사'들의 링크 주소를 싹 가져옵니다. (중복 검사용)
+    const { data: existingArticles } = await supabase
+      .from('articles')
+      .select('original_link')
+      .eq('source_type', 'scraped');
       
-      if (title && original_link) {
-        articles.push({
-          source_type: 'scraped',
-          title: title,
-          original_link: original_link,
-          // 구글 자판기는 요약이나 썸네일이 예쁘지 않아서 기본값으로 세팅합니다.
-          summary: '기사 원문 링크를 클릭해서 자세한 내용을 확인해 주세요.',
-          thumbnail_url: null, 
-          published_at: published_at,
-        });
+    const existingLinks = existingArticles?.map(a => a.original_link) || [];
+
+    // 2. 구글 뉴스 가져오기 (예: 청소년 OR 부산)
+    const res = await fetch('https://news.google.com/rss/search?q=청소년+OR+부산&hl=ko&gl=KR&ceid=KR:ko', { cache: 'no-store' });
+    const text = await res.text();
+
+    // 3. 가져온 뉴스에서 제목과 링크를 뽑아냅니다.
+    const items = [...text.matchAll(/<item>([\s\S]*?)<\/item>/g)];
+    const newArticles = [];
+
+    for (const item of items) {
+      const content = item[1];
+      const titleMatch = content.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || content.match(/<title>(.*?)<\/title>/);
+      const linkMatch = content.match(/<link>(.*?)<\/link>/);
+      const pubDateMatch = content.match(/<pubDate>(.*?)<\/pubDate>/);
+
+      if (titleMatch && linkMatch) {
+        const title = titleMatch[1];
+        const link = linkMatch[1];
+        const pubDate = pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString();
+
+        // ⭐️ 4. 핵심! 기존 링크 목록에 '없는' 기사일 때만 새 기사 상자에 담습니다.
+        if (!existingLinks.includes(link)) {
+          newArticles.push({
+            title: title,
+            summary: '타 언론사에서 보도한 뉴스입니다. 제목을 클릭해 원문을 확인해 주세요.',
+            original_link: link,
+            source_type: 'scraped', // 시스템 상으로는 scraped로 유지
+            published_at: pubDate,
+          });
+        }
       }
-    });
-
-    // 4. 상위 5개만 자르기
-    const topArticles = articles.slice(0, 5);
-
-    if (topArticles.length === 0) {
-      return NextResponse.json({ message: '기사를 찾지 못했습니다.', count: 0 });
     }
 
-    // 5. 우리 창고(Supabase)에 밀어 넣기
-    const { error } = await supabase.from('articles').insert(topArticles);
+    // 5. 중복을 거르고 남은 '진짜 새 기사'만 창고에 넣습니다. (한 번에 최대 10개까지만)
+    if (newArticles.length > 0) {
+      await supabase.from('articles').insert(newArticles.slice(0, 10));
+    }
 
-    if (error) throw error;
-
-    return NextResponse.json({ 
-      message: '구글 뉴스 스크랩 및 창고 저장 대성공! 🎉', 
-      count: topArticles.length, 
-      data: topArticles 
-    });
-
+    return NextResponse.json({ success: true, count: newArticles.length });
   } catch (error) {
-    console.error('스크랩 에러:', error);
-    return NextResponse.json({ error: '스크랩 중 문제가 발생했습니다.' }, { status: 500 });
+    return NextResponse.json({ error: '스크랩 실패' }, { status: 500 });
   }
 }

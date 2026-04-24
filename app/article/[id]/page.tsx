@@ -10,7 +10,7 @@ export default function ArticlePage() {
   const id = params?.id as string;
 
   const [article, setArticle] = useState<any>(null);
-  const [ads, setAds] = useState<any[]>([]); // ⭐️ 광고 데이터 상태 추가
+  const [ads, setAds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [isAdmin, setIsAdmin] = useState(false);
@@ -20,13 +20,10 @@ export default function ArticlePage() {
   const [editImageUrl, setEditImageUrl] = useState('');
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') {
-      setIsAdmin(true);
-    }
+    if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') setIsAdmin(true);
 
     if (!id) return;
     const fetchData = async () => {
-      // 1. 기사 정보 가져오기
       const { data: artData } = await supabase.from('articles').select('*').eq('id', id).single();
       if (artData) {
         setArticle(artData);
@@ -35,7 +32,6 @@ export default function ArticlePage() {
         setEditImageUrl(artData.thumbnail_url || '');
       }
 
-      // 2. 광고 데이터 가져오기 (오른쪽 사이드바용)
       const { data: adData } = await supabase.from('articles').select('*').eq('source_type', 'ad').order('published_at', { ascending: false });
       if (adData) setAds(adData);
 
@@ -48,25 +44,19 @@ export default function ArticlePage() {
     if (window.confirm('이 광고를 삭제하시겠습니까?')) {
       await supabase.from('articles').delete().eq('id', adId);
       setAds(ads.filter(a => a.id !== adId));
-      alert('광고가 삭제되었습니다.');
     }
   };
 
   const handleDelete = async () => {
     if (window.confirm('정말 이 기사를 완전히 삭제하시겠습니까?')) {
       await supabase.from('articles').delete().eq('id', id);
-      alert('기사가 삭제되었습니다. 🗑️');
       router.push('/');
     }
   };
 
   const handleUpdate = async () => {
-    const { error } = await supabase.from('articles').update({
-      title: editTitle, summary: editSummary, thumbnail_url: editImageUrl
-    }).eq('id', id);
-
-    if (error) alert('수정 실패: ' + error.message);
-    else {
+    const { error } = await supabase.from('articles').update({ title: editTitle, summary: editSummary, thumbnail_url: editImageUrl }).eq('id', id);
+    if (!error) {
       alert('기사가 성공적으로 수정되었습니다! ✨');
       setArticle({ ...article, title: editTitle, summary: editSummary, thumbnail_url: editImageUrl });
       setIsEditing(false);
@@ -86,89 +76,63 @@ export default function ArticlePage() {
         </div>
       </nav>
 
-      {/* ⭐️ 기사 상세 페이지 레이아웃 (본문 + 우측 광고) */}
       <main className="max-w-7xl mx-auto mt-10 p-6 flex flex-col md:flex-row gap-10">
-        
-        {/* ================ [왼쪽/중앙: 기사 본문 영역] ================ */}
         <div className="flex-1 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-          
-          {/* 편집장 메뉴 */}
           {isAdmin && article.source_type === 'manual' && (
             <div className="mb-8 flex justify-end gap-3 bg-blue-50 p-4 rounded-2xl border border-blue-100">
               <span className="mr-auto font-bold text-blue-700 my-auto">🛠️ 기사 관리 모드</span>
               {!isEditing ? (
                 <>
-                  <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700">수정</button>
-                  <button onClick={handleDelete} className="px-4 py-2 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600">삭제</button>
+                  <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl">수정</button>
+                  <button onClick={handleDelete} className="px-4 py-2 bg-red-500 text-white font-bold rounded-xl">삭제</button>
                 </>
               ) : (
-                <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-400 text-white font-bold rounded-xl hover:bg-gray-500">취소</button>
+                <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-400 text-white font-bold rounded-xl">취소</button>
               )}
             </div>
           )}
 
           {isEditing ? (
-            /* 수정 화면 */
             <div className="space-y-4">
               <input className="w-full p-4 border rounded-xl bg-gray-50 text-2xl font-bold" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
-              <input className="w-full p-4 border rounded-xl bg-gray-50" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} placeholder="이미지 URL" />
+              <input className="w-full p-4 border rounded-xl bg-gray-50" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
               <textarea className="w-full p-4 border rounded-xl bg-gray-50 h-96" value={editSummary} onChange={(e) => setEditSummary(e.target.value)} />
-              <button onClick={handleUpdate} className="w-full bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-800 transition">수정 완료 저장하기</button>
+              <button onClick={handleUpdate} className="w-full bg-blue-700 text-white font-bold py-4 rounded-xl">저장하기</button>
             </div>
           ) : (
-            /* 읽기 화면 */
             <>
               <header className="mb-8 border-b border-gray-100 pb-8">
-                <div className="inline-block bg-red-100 text-red-600 font-bold px-4 py-1 rounded-full text-xs mb-4">
-                  {article.source_type === 'manual' ? '단독 보도' : '스크랩 뉴스'}
+                {/* ⭐️ 배지 단어 수정 */}
+                <div className={`inline-block font-bold px-4 py-1 rounded-full text-xs mb-4 ${article.source_type === 'manual' ? 'bg-red-100 text-red-600' : 'bg-gray-200 text-gray-700'}`}>
+                  {article.source_type === 'manual' ? '단독 보도' : '타 언론사 기사'}
                 </div>
                 <h1 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight mb-6">{article.title}</h1>
-                <div className="text-gray-400 font-medium">
-                  입력: {new Date(article.published_at).toLocaleString('ko-KR')}
-                </div>
+                <div className="text-gray-400 font-medium">입력: {new Date(article.published_at).toLocaleString('ko-KR')}</div>
               </header>
 
               <div className="mb-10 rounded-3xl overflow-hidden shadow-md">
                 <img src={article.thumbnail_url || defaultImage} alt="본문 이미지" className="w-full h-auto"/>
               </div>
-
-              <article className="text-gray-800 text-xl leading-relaxed whitespace-pre-wrap break-words font-medium">
-                {article.summary}
-              </article>
+              <article className="text-gray-800 text-xl leading-relaxed whitespace-pre-wrap break-words font-medium">{article.summary}</article>
             </>
           )}
         </div>
 
-        {/* ================ [오른쪽: 광고 사이드바 영역] ================ */}
         <aside className="w-full md:w-80 space-y-8">
           <div className="sticky top-24 space-y-6">
-            <h3 className="font-bold text-gray-400 text-sm flex items-center gap-2">
-              <span className="w-full h-px bg-gray-300"></span> AD <span className="w-full h-px bg-gray-300"></span>
-            </h3>
-
-            {/* 광고 목록 (홈페이지와 동일한 3:4 비율) */}
+            <h3 className="font-bold text-gray-400 text-sm flex items-center gap-2"><span className="w-full h-px bg-gray-300"></span> AD <span className="w-full h-px bg-gray-300"></span></h3>
             <div className="flex flex-col gap-6">
               {ads.map((ad) => (
                 <div key={ad.id} className="group relative">
-                  <a href={ad.original_link} target="_blank" rel="noopener noreferrer" 
-                     className="block relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-200 bg-white aspect-[3/4]">
+                  <a href={ad.original_link} target="_blank" rel="noopener noreferrer" className="block relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-200 bg-white aspect-[3/4]">
                     <img src={ad.thumbnail_url} alt="광고" className="w-full h-full object-cover"/>
                     <div className="absolute top-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 m-1 rounded">AD</div>
                   </a>
-                  {isAdmin && (
-                    <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-blue-600 text-white p-2 rounded-full text-xs font-bold shadow-lg">수정</button>
-                      <button onClick={() => handleDeleteAd(ad.id)} className="bg-red-600 text-white p-2 rounded-full text-xs font-bold shadow-lg">삭제</button>
-                    </div>
-                  )}
                 </div>
               ))}
-              
-              {/* 빈 광고 칸 채우기 */}
               {Array.from({ length: Math.max(0, 3 - ads.length) }).map((_, i) => (
                 <div key={`empty-${i}`} className="bg-gray-200 aspect-[3/4] rounded-2xl flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
-                  <span className="text-xl mb-1">📢</span>
-                  <span className="font-bold text-xs text-center">광고 문의<br/>BY NEWS</span>
+                  <span className="text-xl mb-1">📢</span><span className="font-bold text-xs text-center">광고 문의<br/>BY NEWS</span>
                 </div>
               ))}
             </div>
