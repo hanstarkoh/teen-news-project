@@ -72,7 +72,11 @@ export default function ArticlePage() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <nav className="bg-blue-700 text-white p-4 shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <a href="/" className="text-2xl font-black tracking-widest">🌊 BY NEWS</a>
+          {/* ⭐️ 기사 세부 페이지에도 '부산 청소년의 새로운 소식' 슬로건 추가! */}
+          <div className="flex flex-col">
+            <a href="/" className="text-2xl font-black tracking-tighter">🌊 BY NEWS</a>
+            <span className="text-[10px] md:text-xs font-bold text-blue-200">부산 청소년의 새로운 소식</span>
+          </div>
         </div>
       </nav>
 
@@ -102,7 +106,6 @@ export default function ArticlePage() {
           ) : (
             <>
               <header className="mb-8 border-b border-gray-100 pb-8">
-                {/* ⭐️ 배지 단어 수정 */}
                 <div className={`inline-block font-bold px-4 py-1 rounded-full text-xs mb-4 ${article.source_type === 'manual' ? 'bg-red-100 text-red-600' : 'bg-gray-200 text-gray-700'}`}>
                   {article.source_type === 'manual' ? '단독 보도' : '타 언론사 기사'}
                 </div>
@@ -128,6 +131,12 @@ export default function ArticlePage() {
                     <img src={ad.thumbnail_url} alt="광고" className="w-full h-full object-cover"/>
                     <div className="absolute top-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 m-1 rounded">AD</div>
                   </a>
+                  {isAdmin && (
+                    <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-blue-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">수정</button>
+                      <button onClick={() => handleDeleteAd(ad.id)} className="bg-red-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">삭제</button>
+                    </div>
+                  )}
                 </div>
               ))}
               {Array.from({ length: Math.max(0, 3 - ads.length) }).map((_, i) => (
