@@ -8,15 +8,13 @@ export default function Home() {
   const [ads, setAds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // 검색 및 필터 상태
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
-  const [startDate, setStartDate] = useState(''); // ⭐️ 시작 날짜
-  const [endDate, setEndDate] = useState('');     // ⭐️ 종료 날짜
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
-  // 페이지네이션 상태 (⭐️ 현재 페이지 번호)
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10; // 한 페이지에 보여줄 기사 수
+  const ITEMS_PER_PAGE = 10;
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [isScraping, setIsScraping] = useState(false);
@@ -33,7 +31,6 @@ export default function Home() {
     return () => window.removeEventListener('storage', checkLogin);
   }, []);
 
-  // 검색어나 필터가 바뀌면 무조건 1페이지로 돌아가기
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filter, startDate, endDate]);
@@ -77,16 +74,14 @@ export default function Home() {
     setIsScraping(false);
   };
 
-  // ⭐️ 검색, 카테고리, 날짜 필터링 적용
   const filteredArticles = articles.filter(article => {
     const matchSearch = article.title.includes(searchTerm) || article.summary.includes(searchTerm);
     const matchFilter = filter === 'all' || article.source_type === filter;
     
-    // 날짜 계산
     const articleDate = new Date(article.published_at);
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
-    if (end) end.setHours(23, 59, 59, 999); // 종료일의 밤 11시 59분까지 포함되도록 설정
+    if (end) end.setHours(23, 59, 59, 999);
 
     const matchStartDate = start ? articleDate >= start : true;
     const matchEndDate = end ? articleDate <= end : true;
@@ -94,7 +89,6 @@ export default function Home() {
     return matchSearch && matchFilter && matchStartDate && matchEndDate;
   });
 
-  // ⭐️ 페이지네이션 계산 (전체 페이지 수 및 현재 페이지에 보여줄 기사만 자르기)
   const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
   const paginatedArticles = filteredArticles.slice(
     (currentPage - 1) * ITEMS_PER_PAGE, 
@@ -107,12 +101,12 @@ export default function Home() {
     <div className="min-h-screen bg-gray-100 pb-20">
       <nav className="bg-blue-700 text-white p-4 shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex flex-col">
+          <div className="flex flex-col items-center md:items-start">
             <a href="/" className="text-2xl font-black tracking-tighter">🌊 BY NEWS</a>
             <span className="text-[10px] md:text-xs font-bold text-blue-200">부산 청소년의 새로운 소식</span>
           </div>
           
-          <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-center">
+          <div className="flex items-center gap-3 md:gap-4 flex-wrap justify-center">
             <a href="/request" className="bg-yellow-400 text-blue-900 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-yellow-300 transition">📢 기사 제보하기</a>
             {isAdmin ? (
               <>
@@ -121,12 +115,12 @@ export default function Home() {
                 </button>
                 <a href="/admin/requests" className="bg-orange-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-orange-600 transition">📬 제보 확인</a>
                 <a href="/write" className="bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-600 transition">✍️ 기사 쓰기</a>
-                {/* ⭐️ 잃어버렸던 광고 추가 버튼 복구! */}
                 <a href="/ad" className="bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-600 transition">💸 광고 추가</a>
                 <button onClick={handleLogout} className="bg-white text-gray-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">로그아웃</button>
               </>
             ) : (
-              <a href="/write" className="bg-white text-blue-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">편집장 로그인</a>
+              /* ⭐️ 거슬리던 커다란 로그인 버튼 대신 작고 귀여운 비밀 자물쇠 달기! */
+              <a href="/write" className="text-blue-300 hover:text-white transition-colors text-lg" title="관리자 페이지">🔒</a>
             )}
           </div>
         </div>
@@ -139,7 +133,6 @@ export default function Home() {
             <input type="text" placeholder="검색어를 입력하세요..." className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
           
-          {/* ⭐️ 기간 검색 기능 추가 */}
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <h3 className="font-bold text-gray-800 mb-3 text-lg">📅 기간 검색</h3>
             <div className="flex flex-col space-y-2">
@@ -191,7 +184,6 @@ export default function Home() {
                 )}
               </div>
 
-              {/* ⭐️ 페이지네이션 (1, 2, 3, 4 ... 버튼) */}
               {totalPages > 1 && (
                 <div className="flex justify-center gap-2 mt-10">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
@@ -199,7 +191,7 @@ export default function Home() {
                       key={page}
                       onClick={() => {
                         setCurrentPage(page);
-                        window.scrollTo({ top: 0, behavior: 'smooth' }); // 누르면 맨 위로 부드럽게 올리기
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                       className={`w-10 h-10 rounded-xl font-bold transition-all shadow-sm ${currentPage === page ? 'bg-blue-700 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}
                     >
@@ -221,7 +213,6 @@ export default function Home() {
                   <img src={ad.thumbnail_url} alt="배너 광고" className="w-full h-full object-cover"/>
                   <div className="absolute top-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 m-1 rounded">AD</div>
                 </a>
-                {/* ⭐️ 잃어버렸던 광고 수정/삭제 버튼 복구! */}
                 {isAdmin && (
                   <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-blue-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">수정</button>
