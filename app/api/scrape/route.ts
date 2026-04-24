@@ -12,7 +12,7 @@ export async function GET() {
     const existingLinks = existingArticles?.map(a => a.original_link) || [];
 
     // 2. 구글 뉴스 가져오기 (예: 청소년 OR 부산)
-    const res = await fetch('https://news.google.com/rss/search?q=청소년+OR+부산&hl=ko&gl=KR&ceid=KR:ko', { cache: 'no-store' });
+    const res = await fetch('https://news.google.com/rss/search?q=청소년+부산&hl=ko&gl=KR&ceid=KR:ko', { cache: 'no-store' });
     const text = await res.text();
 
     // 3. 가져온 뉴스에서 제목과 링크를 뽑아냅니다.
