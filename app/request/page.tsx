@@ -7,6 +7,7 @@ export default function RequestPage() {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [content, setContent] = useState('');
+  const [imageUrl, setImageUrl] = useState(''); // ⭐️ 이미지 주소 상태 추가
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
@@ -14,8 +15,9 @@ export default function RequestPage() {
     e.preventDefault();
     setSubmitting(true);
 
+    // ⭐️ 창고에 이미지 주소도 같이 보냅니다!
     const { error } = await supabase.from('requests').insert([
-      { title, author, content }
+      { title, author, content, image_url: imageUrl } 
     ]);
 
     if (error) alert('제보 전송 실패 ㅜㅜ');
@@ -28,7 +30,7 @@ export default function RequestPage() {
 
   return (
     <div className="min-h-screen bg-blue-50 py-10 px-4">
-      <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl p-8 border border-blue-100">
+      <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-xl p-8 border border-blue-100">
         <button onClick={() => router.push('/')} className="mb-6 text-gray-500 font-bold hover:text-blue-700">← 홈으로 돌아가기</button>
         <h1 className="text-3xl font-black text-blue-800 mb-2">📢 기사 제보하기</h1>
         <p className="text-gray-500 mb-8 font-medium">부산 청소년들에게 알리고 싶은 소식을 자유롭게 제보해 주세요!</p>
@@ -42,9 +44,30 @@ export default function RequestPage() {
             <label className="block mb-2 font-bold text-gray-700">제보자 성함/단체명</label>
             <input className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50" placeholder="예: 부산고 학생회 김철수" value={author} onChange={(e) => setAuthor(e.target.value)} required />
           </div>
+
+          {/* ⭐️ 썸네일 이미지 입력 영역 (입력칸 + 설명창 2단 구조) */}
+          <div>
+            <label className="block mb-2 font-bold text-gray-700">관련 사진 (이미지 주소)</label>
+            <div className="flex flex-col md:flex-row gap-4">
+              <input 
+                className="flex-1 p-4 border border-gray-200 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400" 
+                placeholder="https://..." 
+                value={imageUrl} 
+                onChange={(e) => setImageUrl(e.target.value)} 
+              />
+              <div className="w-full md:w-1/3 bg-blue-50 p-4 rounded-xl text-sm text-blue-800 border border-blue-100 flex items-center shadow-sm">
+                💡 <b>안내:</b> 인터넷에 있는 사진을 우클릭한 뒤, <b>'이미지 주소 복사'</b>를 눌러서 이곳에 붙여넣어 주세요! (선택사항)
+              </div>
+            </div>
+            {/* 이미지 주소를 넣으면 어떻게 보이는지 미리보기 제공 */}
+            {imageUrl && (
+              <img src={imageUrl} alt="미리보기" className="mt-4 h-40 rounded-xl object-cover border shadow-sm" onError={(e) => (e.currentTarget.style.display = 'none')} />
+            )}
+          </div>
+
           <div>
             <label className="block mb-2 font-bold text-gray-700">제보 내용</label>
-            <textarea className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 h-64" placeholder="상세한 내용을 적어주세요. 사진이 있다면 이미지 링크를 포함해 주셔도 좋습니다." value={content} onChange={(e) => setContent(e.target.value)} required />
+            <textarea className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 h-64" placeholder="상세한 내용을 적어주세요." value={content} onChange={(e) => setContent(e.target.value)} required />
           </div>
           <button type="submit" disabled={submitting} className="w-full bg-blue-700 text-white p-4 rounded-xl font-bold text-lg hover:bg-blue-800 shadow-lg">
             {submitting ? '⏳ 전송 중...' : '뉴스 제보 보내기'}
