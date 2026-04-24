@@ -7,7 +7,7 @@ export default function RequestPage() {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [content, setContent] = useState('');
-  const [imageUrl, setImageUrl] = useState(''); // ⭐️ 이미지 주소 상태 추가
+  const [imageUrl, setImageUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
@@ -15,7 +15,6 @@ export default function RequestPage() {
     e.preventDefault();
     setSubmitting(true);
 
-    // ⭐️ 창고에 이미지 주소도 같이 보냅니다!
     const { error } = await supabase.from('requests').insert([
       { title, author, content, image_url: imageUrl } 
     ]);
@@ -45,20 +44,19 @@ export default function RequestPage() {
             <input className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50" placeholder="예: 부산고 학생회 김철수" value={author} onChange={(e) => setAuthor(e.target.value)} required />
           </div>
 
-          {/* ⭐️ 썸네일 이미지 입력 영역 (입력칸 + 설명창 2단 구조) */}
+          {/* ⭐️ 문제 해결: 입력칸과 안내 박스를 위아래로 넓게 배치했습니다 */}
           <div>
             <label className="block mb-2 font-bold text-gray-700">관련 사진 (이미지 주소)</label>
-            <div className="flex flex-col md:flex-row gap-4">
-              <input 
-                className="flex-1 p-4 border border-gray-200 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400" 
-                placeholder="https://..." 
-                value={imageUrl} 
-                onChange={(e) => setImageUrl(e.target.value)} 
-              />
-              <div className="w-full md:w-1/3 bg-blue-50 p-4 rounded-xl text-sm text-blue-800 border border-blue-100 flex items-center shadow-sm">
-                💡 <b>안내:</b> 인터넷에 있는 사진을 우클릭한 뒤, <b>'이미지 주소 복사'</b>를 눌러서 이곳에 붙여넣어 주세요! (선택사항)
-              </div>
+            <input 
+              className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400" 
+              placeholder="https://..." 
+              value={imageUrl} 
+              onChange={(e) => setImageUrl(e.target.value)} 
+            />
+            <div className="mt-3 bg-blue-50 p-4 rounded-xl text-sm text-blue-800 border border-blue-100 shadow-sm leading-relaxed">
+              💡 <b>안내:</b> 인터넷에 있는 사진을 우클릭한 뒤, <b>'이미지 주소 복사'</b>를 눌러서 이곳에 붙여넣어 주세요! (선택사항)
             </div>
+            
             {/* 이미지 주소를 넣으면 어떻게 보이는지 미리보기 제공 */}
             {imageUrl && (
               <img src={imageUrl} alt="미리보기" className="mt-4 h-40 rounded-xl object-cover border shadow-sm" onError={(e) => (e.currentTarget.style.display = 'none')} />
@@ -69,7 +67,7 @@ export default function RequestPage() {
             <label className="block mb-2 font-bold text-gray-700">제보 내용</label>
             <textarea className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 h-64" placeholder="상세한 내용을 적어주세요." value={content} onChange={(e) => setContent(e.target.value)} required />
           </div>
-          <button type="submit" disabled={submitting} className="w-full bg-blue-700 text-white p-4 rounded-xl font-bold text-lg hover:bg-blue-800 shadow-lg">
+          <button type="submit" disabled={submitting} className="w-full bg-blue-700 text-white p-4 rounded-xl font-bold text-lg hover:bg-blue-800 shadow-lg transition-colors">
             {submitting ? '⏳ 전송 중...' : '뉴스 제보 보내기'}
           </button>
         </form>
