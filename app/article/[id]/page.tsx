@@ -10,9 +10,9 @@ export default function ArticlePage() {
   const id = params?.id as string;
 
   const [article, setArticle] = useState<any>(null);
+  const [ads, setAds] = useState<any[]>([]); // ⭐️ 광고 데이터 상태 추가
   const [loading, setLoading] = useState(true);
   
-  // ⭐️ 1. 편집장인지 확인하는 상태 추가
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -20,29 +20,37 @@ export default function ArticlePage() {
   const [editImageUrl, setEditImageUrl] = useState('');
 
   useEffect(() => {
-    // ⭐️ 2. 화면 켜질 때 VIP 출입증 검사
     if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') {
       setIsAdmin(true);
     }
 
     if (!id) return;
-    const fetchArticle = async () => {
-      const { data, error } = await supabase.from('articles').select('*').eq('id', id).single();
-      if (data) {
-        setArticle(data);
-        setEditTitle(data.title);
-        setEditSummary(data.summary);
-        setEditImageUrl(data.thumbnail_url || '');
+    const fetchData = async () => {
+      // 1. 기사 정보 가져오기
+      const { data: artData } = await supabase.from('articles').select('*').eq('id', id).single();
+      if (artData) {
+        setArticle(artData);
+        setEditTitle(artData.title);
+        setEditSummary(artData.summary);
+        setEditImageUrl(artData.thumbnail_url || '');
       }
+
+      // 2. 광고 데이터 가져오기 (오른쪽 사이드바용)
+      const { data: adData } = await supabase.from('articles').select('*').eq('source_type', 'ad').order('published_at', { ascending: false });
+      if (adData) setAds(adData);
+
       setLoading(false);
     };
-    fetchArticle();
+    fetchData();
   }, [id]);
 
-  if (loading) return <div className="p-20 text-center text-xl">기사를 불러오는 중입니다... 🌊</div>;
-  if (!article) return <div className="p-20 text-center text-red-500 text-xl">기사를 찾을 수 없습니다.</div>;
-
-  const defaultImage = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop";
+  const handleDeleteAd = async (adId: number) => {
+    if (window.confirm('이 광고를 삭제하시겠습니까?')) {
+      await supabase.from('articles').delete().eq('id', adId);
+      setAds(ads.filter(a => a.id !== adId));
+      alert('광고가 삭제되었습니다.');
+    }
+  };
 
   const handleDelete = async () => {
     if (window.confirm('정말 이 기사를 완전히 삭제하시겠습니까?')) {
@@ -65,58 +73,107 @@ export default function ArticlePage() {
     }
   };
 
+  if (loading) return <div className="p-20 text-center text-xl">기사를 불러오는 중입니다... 🌊</div>;
+  if (!article) return <div className="p-20 text-center text-red-500 text-xl">기사를 찾을 수 없습니다.</div>;
+
+  const defaultImage = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop";
+
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <nav className="bg-blue-600 text-white p-4 shadow-md">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <a href="/" className="text-2xl font-black tracking-wider hover:text-blue-200 transition-colors">🌊 BY NEWS</a>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <nav className="bg-blue-700 text-white p-4 shadow-lg sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <a href="/" className="text-2xl font-black tracking-widest">🌊 BY NEWS</a>
         </div>
       </nav>
 
-      <main className="max-w-3xl mx-auto mt-10 p-6">
+      {/* ⭐️ 기사 상세 페이지 레이아웃 (본문 + 우측 광고) */}
+      <main className="max-w-7xl mx-auto mt-10 p-6 flex flex-col md:flex-row gap-10">
         
-        {/* ⭐️ 3. 출입증(isAdmin)이 있고, 직접 쓴 기사일 때만 이 메뉴가 보입니다! */}
-        {isAdmin && article.source_type === 'manual' && (
-          <div className="mb-8 flex justify-end gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
-            <span className="mr-auto font-bold text-blue-600 my-auto">🛠️ 편집장 로그인 중</span>
-            {!isEditing ? (
-              <>
-                <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-100 text-blue-700 font-bold rounded-lg hover:bg-blue-200">수정</button>
-                <button onClick={handleDelete} className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200">삭제</button>
-              </>
-            ) : (
-              <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400">수정 취소</button>
-            )}
-          </div>
-        )}
-
-        {isEditing ? (
-          <div className="space-y-4 bg-yellow-50 p-6 rounded-xl border border-yellow-200 shadow-inner">
-            <h2 className="text-xl font-bold text-yellow-800 mb-4">✏️ 기사 수정 중...</h2>
-            <input className="w-full p-3 border rounded-lg text-2xl font-bold" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="제목" />
-            <input className="w-full p-3 border rounded-lg" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} placeholder="새로운 이미지 주소 URL" />
-            <textarea className="w-full p-3 border rounded-lg h-60" value={editSummary} onChange={(e) => setEditSummary(e.target.value)} placeholder="기사 내용" />
-            <button onClick={handleUpdate} className="w-full bg-blue-600 text-white font-bold py-4 rounded-lg shadow hover:bg-blue-700">수정된 내용 저장하기</button>
-          </div>
-        ) : (
-          <>
-            <header className="mb-8 border-b border-gray-200 pb-6">
-              <div className="inline-block bg-red-50 text-red-600 font-bold px-3 py-1 rounded-full text-sm mb-4">
-                {article.source_type === 'manual' ? '[단독 보도]' : '[스크랩 뉴스]'}
-              </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-6">{article.title}</h1>
-              <div className="text-gray-500 text-sm">입력 {new Date(article.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-            </header>
-            <div className="mb-10 rounded-xl overflow-hidden shadow-sm border border-gray-100">
-              <img src={article.thumbnail_url || defaultImage} alt="기사 대표 이미지" className="w-full h-auto object-cover max-h-[500px]"/>
+        {/* ================ [왼쪽/중앙: 기사 본문 영역] ================ */}
+        <div className="flex-1 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+          
+          {/* 편집장 메뉴 */}
+          {isAdmin && article.source_type === 'manual' && (
+            <div className="mb-8 flex justify-end gap-3 bg-blue-50 p-4 rounded-2xl border border-blue-100">
+              <span className="mr-auto font-bold text-blue-700 my-auto">🛠️ 기사 관리 모드</span>
+              {!isEditing ? (
+                <>
+                  <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700">수정</button>
+                  <button onClick={handleDelete} className="px-4 py-2 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600">삭제</button>
+                </>
+              ) : (
+                <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-400 text-white font-bold rounded-xl hover:bg-gray-500">취소</button>
+              )}
             </div>
-            <article className="text-gray-800 text-lg leading-loose break-keep">
-              {article.summary.split('\n').map((line: string, i: number) => (
-                <p key={i} className="mb-6">{line}</p>
+          )}
+
+          {isEditing ? (
+            /* 수정 화면 */
+            <div className="space-y-4">
+              <input className="w-full p-4 border rounded-xl bg-gray-50 text-2xl font-bold" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              <input className="w-full p-4 border rounded-xl bg-gray-50" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} placeholder="이미지 URL" />
+              <textarea className="w-full p-4 border rounded-xl bg-gray-50 h-96" value={editSummary} onChange={(e) => setEditSummary(e.target.value)} />
+              <button onClick={handleUpdate} className="w-full bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-800 transition">수정 완료 저장하기</button>
+            </div>
+          ) : (
+            /* 읽기 화면 */
+            <>
+              <header className="mb-8 border-b border-gray-100 pb-8">
+                <div className="inline-block bg-red-100 text-red-600 font-bold px-4 py-1 rounded-full text-xs mb-4">
+                  {article.source_type === 'manual' ? '단독 보도' : '스크랩 뉴스'}
+                </div>
+                <h1 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight mb-6">{article.title}</h1>
+                <div className="text-gray-400 font-medium">
+                  입력: {new Date(article.published_at).toLocaleString('ko-KR')}
+                </div>
+              </header>
+
+              <div className="mb-10 rounded-3xl overflow-hidden shadow-md">
+                <img src={article.thumbnail_url || defaultImage} alt="본문 이미지" className="w-full h-auto"/>
+              </div>
+
+              <article className="text-gray-800 text-xl leading-relaxed whitespace-pre-wrap break-words font-medium">
+                {article.summary}
+              </article>
+            </>
+          )}
+        </div>
+
+        {/* ================ [오른쪽: 광고 사이드바 영역] ================ */}
+        <aside className="w-full md:w-80 space-y-8">
+          <div className="sticky top-24 space-y-6">
+            <h3 className="font-bold text-gray-400 text-sm flex items-center gap-2">
+              <span className="w-full h-px bg-gray-300"></span> AD <span className="w-full h-px bg-gray-300"></span>
+            </h3>
+
+            {/* 광고 목록 (홈페이지와 동일한 3:4 비율) */}
+            <div className="flex flex-col gap-6">
+              {ads.map((ad) => (
+                <div key={ad.id} className="group relative">
+                  <a href={ad.original_link} target="_blank" rel="noopener noreferrer" 
+                     className="block relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-200 bg-white aspect-[3/4]">
+                    <img src={ad.thumbnail_url} alt="광고" className="w-full h-full object-cover"/>
+                    <div className="absolute top-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 m-1 rounded">AD</div>
+                  </a>
+                  {isAdmin && (
+                    <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-blue-600 text-white p-2 rounded-full text-xs font-bold shadow-lg">수정</button>
+                      <button onClick={() => handleDeleteAd(ad.id)} className="bg-red-600 text-white p-2 rounded-full text-xs font-bold shadow-lg">삭제</button>
+                    </div>
+                  )}
+                </div>
               ))}
-            </article>
-          </>
-        )}
+              
+              {/* 빈 광고 칸 채우기 */}
+              {Array.from({ length: Math.max(0, 3 - ads.length) }).map((_, i) => (
+                <div key={`empty-${i}`} className="bg-gray-200 aspect-[3/4] rounded-2xl flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
+                  <span className="text-xl mb-1">📢</span>
+                  <span className="font-bold text-xs text-center">광고 문의<br/>BY NEWS</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
       </main>
     </div>
   );
