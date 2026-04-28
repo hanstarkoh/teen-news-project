@@ -1,12 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-// ⭐️ 복잡한 스크립트 로딩을 한 줄로 끝내주는 마법의 공식 도구!
-import { Map, MapMarker, CustomOverlayMap, useKakaoLoader } from 'react-kakao-maps-sdk';
+
+// 오픈스트리트맵(Leaflet) 타입 설정
+declare global {
+  interface Window {
+    L: any;
+  }
+}
 
 export default function HotPlacePage() {
+  const [map, setMap] = useState<any>(null);
   const [places, setPlaces] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
 
@@ -15,14 +21,11 @@ export default function HotPlacePage() {
   const [category, setCategory] = useState('가성비 맛집 🍔');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
 
   const router = useRouter();
-
-  // ⭐️ 여기서 카카오 지도를 가장 안전하게 불러옵니다!
-  const [loading, error] = useKakaoLoader({
-    appkey: "d19d054a9b9daf8e0fa961cba989ef2b",
-  });
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const tempMarkerRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -33,6 +36,81 @@ export default function HotPlacePage() {
     const { data } = await supabase.from('hotplaces').select('*').order('created_at', { ascending: false });
     if (data) setPlaces(data);
   };
+
+  // ⭐️ API 키 없이 완전 무료 지도를 가져오는 마법의 로직
+  useEffect(() => {
+    const initMap = () => {
+      if (!window.L || !mapContainer.current || map) return;
+
+      // 1. 지도 그리기 (부산 시청 중심)
+      const initialMap = window.L.map(mapContainer.current).setView([35.1795543, 129.0756416], 13);
+
+      // 2. 무료 타일(지도 이미지) 불러오기
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(initialMap);
+
+      // 3. 지도 클릭 시 좌표 얻기 & 핀 꽂기
+      initialMap.on('click', function(e: any) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        setSelectedLatLng({ lat, lng });
+
+        // 기존에 찍은 임시 핀 지우기
+        if (tempMarkerRef.current) {
+          initialMap.removeLayer(tempMarkerRef.current);
+        }
+
+        // 클릭한 곳에 핀 꽂고 말풍선 띄우기
+        const newMarker = window.L.marker([lat, lng]).addTo(initialMap)
+          .bindPopup("<b>여기에 등록할까요?</b><br>오른쪽 폼을 작성해주세요!").openPopup();
+        tempMarkerRef.current = newMarker;
+      });
+
+      setMap(initialMap);
+    };
+
+    if (window.L) {
+      initMap();
+    } else {
+      // 지도 디자인(CSS) 불러오기
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+
+      // 지도 기능(JS) 불러오기
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.async = true;
+      script.onload = initMap;
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  // ⭐️ 데이터베이스에 있는 핫플들 지도에 뿌려주기
+  useEffect(() => {
+    if (!map || places.length === 0 || !window.L) return;
+
+    // 기존 핀 지우기
+    markersRef.current.forEach(m => map.removeLayer(m));
+    markersRef.current = [];
+
+    places.forEach(place => {
+      const marker = window.L.marker([place.lat, place.lng]).addTo(map);
+      
+      const popupContent = `
+        <div style="width:180px;">
+          <h4 style="font-weight:bold; color:#1e40af; margin-bottom:4px; font-size:14px;">${place.title}</h4>
+          <span style="font-size:11px; background:#f3f4f6; padding:2px 6px; border-radius:4px; font-weight:bold;">${place.category}</span>
+          <p style="font-size:12px; margin-top:6px; color:#4b5563;">${place.description}</p>
+        </div>
+      `;
+      
+      marker.bindPopup(popupContent);
+      markersRef.current.push(marker);
+    });
+  }, [map, places]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +126,7 @@ export default function HotPlacePage() {
     }]);
 
     if (!error) {
-      alert('🎉 새로운 핫플레이스가 지도에 등록되었습니다!');
+      alert('🎉 새로운 핫플레이스가 등록되었습니다!');
       setTitle('');
       setDescription('');
       setSelectedLatLng(null);
@@ -71,56 +149,9 @@ export default function HotPlacePage() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="w-full lg:w-2/3 bg-white p-4 rounded-3xl shadow-md border border-blue-100">
             <p className="text-sm font-bold text-blue-600 mb-4 ml-2">👇 지도에서 원하는 위치를 클릭하면 핫플을 등록할 수 있어요!</p>
-
-            {/* ⭐️ 로딩 상태와 에러 상태를 화면에 직접 보여줍니다 */}
-            {error ? (
-              <div className="w-full h-[500px] flex items-center justify-center bg-red-50 text-red-500 font-bold rounded-2xl border border-red-200 text-center p-6 leading-relaxed">
-                ❌ 카카오 지도를 가져오지 못했습니다.<br/><br/>
-                현재 사용 중인 인터넷(학교/관공서) 방화벽에서<br/>카카오 접속을 차단했을 확률이 99%입니다.<br/>스마트폰 데이터(핫스팟)로 연결해 보세요!
-              </div>
-            ) : loading ? (
-              <div className="w-full h-[500px] flex items-center justify-center bg-gray-100 text-gray-400 font-bold rounded-2xl border border-gray-200">
-                지도를 안전하게 불러오는 중입니다... 🚀
-              </div>
-            ) : (
-              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative">
-                <Map
-                  center={{ lat: 35.1795543, lng: 129.0756416 }}
-                  style={{ width: "100%", height: "500px" }}
-                  level={7}
-                  onClick={(_t, mouseEvent) => setSelectedLatLng({
-                    lat: mouseEvent.latLng.getLat(),
-                    lng: mouseEvent.latLng.getLng(),
-                  })}
-                >
-                  {/* 클릭한 곳에 꽂히는 임시 빨간 핀 */}
-                  {selectedLatLng && (
-                    <MapMarker position={selectedLatLng} image={{ src: 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png', size: { width: 24, height: 35 } }} />
-                  )}
-
-                  {/* 데이터베이스에 저장된 핫플 마커들 */}
-                  {places.map((place) => (
-                    <div key={place.id}>
-                      <MapMarker
-                        position={{ lat: place.lat, lng: place.lng }}
-                        onMouseOver={() => setHoveredPlace(place.id)}
-                        onMouseOut={() => setHoveredPlace(null)}
-                      />
-                      {/* 마우스 올리면 뜨는 예쁜 말풍선 */}
-                      {hoveredPlace === place.id && (
-                        <CustomOverlayMap position={{ lat: place.lat, lng: place.lng }} yAnchor={1.5}>
-                          <div className="bg-white p-3 rounded-xl shadow-lg border border-blue-200 w-48 z-10 absolute -left-24">
-                            <h4 className="font-bold text-blue-800 text-sm mb-1">{place.title}</h4>
-                            <span className="text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-bold">{place.category}</span>
-                            <p className="text-xs mt-2 text-gray-600">{place.description}</p>
-                          </div>
-                        </CustomOverlayMap>
-                      )}
-                    </div>
-                  ))}
-                </Map>
-              </div>
-            )}
+            
+            {/* ⭐️ 자유의 상징! 오픈소스 지도가 그려질 도화지 (z-0을 줘서 메뉴바를 안 가리게 함) */}
+            <div ref={mapContainer} className="w-full h-[500px] rounded-2xl border border-gray-200 z-0 relative"></div>
           </div>
 
           <div className="w-full lg:w-1/3 space-y-6">
@@ -158,7 +189,7 @@ export default function HotPlacePage() {
               <ul className="text-sm space-y-2 opacity-90">
                 <li>• 핫플 등록은 <b>로그인한 기자단</b>만 가능해요.</li>
                 <li>• 부적절한 장소 등록 시 관리자에 의해 삭제될 수 있습니다.</li>
-                <li>• 지도에 찍힌 핀에 마우스를 올리면 정보를 볼 수 있어요!</li>
+                <li>• 지도에 찍힌 핀을 클릭하면 정보를 볼 수 있어요!</li>
               </ul>
             </div>
           </div>
