@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -22,6 +22,9 @@ export default function HotPlacePage() {
   const [submitting, setSubmitting] = useState(false);
 
   const router = useRouter();
+  
+  // ⭐️ 핵심 해결책: document.getElementById 대신 React 전용 방식(useRef)으로 지도 상자를 꽉 잡습니다!
+  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -33,45 +36,38 @@ export default function HotPlacePage() {
     if (data) setPlaces(data);
   };
 
-  // ⭐️ 엇갈림 방지! 가장 확실한 카카오맵 로딩 로직
   useEffect(() => {
     const initMap = () => {
       window.kakao.maps.load(() => {
-        const container = document.getElementById('map');
-        if (!container) return; // 지도를 그릴 빈 상자가 없으면 대기
+        // ⭐️ 상자가 준비되지 않았으면 멈춤
+        if (!mapRef.current) return; 
 
         const options = {
           center: new window.kakao.maps.LatLng(35.1795543, 129.0756416), // 부산 시청 중심
           level: 7
         };
-        const newMap = new window.kakao.maps.Map(container, options);
+        
+        // ⭐️ React가 잡고 있는 상자(mapRef.current)에 지도를 그립니다.
+        const newMap = new window.kakao.maps.Map(mapRef.current, options);
         setMap(newMap);
 
-        // 지도 클릭 시 좌표 가져오기
         window.kakao.maps.event.addListener(newMap, 'click', function(mouseEvent: any) {
           setSelectedLatLng({ lat: mouseEvent.latLng.getLat(), lng: mouseEvent.latLng.getLng() });
         });
       });
     };
 
-    // 1. 이미 카카오 지도가 다운로드 되어 있다면? 바로 그리기!
     if (window.kakao && window.kakao.maps) {
       initMap();
-    } 
-    // 2. 카카오 지도가 없다면? 다운로드 요청하고 다 되면 그리기!
-    else {
+    } else {
       const script = document.createElement('script');
       script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=d19d054a9b9daf8e0fa961cba989ef2b&autoload=false`;
       script.async = true;
       document.head.appendChild(script);
-      
-      script.onload = () => {
-        initMap();
-      };
+      script.onload = () => initMap();
     }
-  }, []); // 화면이 처음 켜질 때 딱 한 번만 실행
+  }, []); 
 
-  // ⭐️ 저장된 핫플 마커 화면에 꽂기
   useEffect(() => {
     if (!map || places.length === 0) return;
 
@@ -131,10 +127,11 @@ export default function HotPlacePage() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="w-full lg:w-2/3 bg-white p-4 rounded-3xl shadow-md border border-blue-100">
             <p className="text-sm font-bold text-blue-600 mb-4 ml-2">👇 지도에서 원하는 위치를 클릭하면 핫플을 등록할 수 있어요!</p>
-            {/* ⭐️ 여기가 지도가 그려지는 도화지입니다. */}
-            <div id="map" className="w-full h-[500px] rounded-2xl border border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 font-bold overflow-hidden">
-              지도를 불러오는 중입니다...
+            
+            {/* ⭐️ 지도 상자 디자인 단순화 & React ref 적용 (지도가 찌그러지지 않습니다!) */}
+            <div ref={mapRef} className="w-full h-[500px] rounded-2xl border border-gray-200 bg-gray-100 relative overflow-hidden">
             </div>
+
           </div>
 
           <div className="w-full lg:w-1/3 space-y-6">
