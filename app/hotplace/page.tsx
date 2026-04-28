@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -22,9 +22,6 @@ export default function HotPlacePage() {
   const [submitting, setSubmitting] = useState(false);
 
   const router = useRouter();
-  
-  // ⭐️ 핵심 해결책: document.getElementById 대신 React 전용 방식(useRef)으로 지도 상자를 꽉 잡습니다!
-  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -36,38 +33,49 @@ export default function HotPlacePage() {
     if (data) setPlaces(data);
   };
 
+  // ⭐️ 중복 로딩 방지 & 완벽한 타이밍 컨트롤
   useEffect(() => {
     const initMap = () => {
-      window.kakao.maps.load(() => {
-        // ⭐️ 상자가 준비되지 않았으면 멈춤
-        if (!mapRef.current) return; 
+      if (window.kakao && window.kakao.maps) {
+        window.kakao.maps.load(() => {
+          const container = document.getElementById('map');
+          if (!container) return;
+          
+          // 만약 상자 안에 글씨가 있다면 깨끗하게 비웁니다
+          container.innerHTML = '';
 
-        const options = {
-          center: new window.kakao.maps.LatLng(35.1795543, 129.0756416), // 부산 시청 중심
-          level: 7
-        };
-        
-        // ⭐️ React가 잡고 있는 상자(mapRef.current)에 지도를 그립니다.
-        const newMap = new window.kakao.maps.Map(mapRef.current, options);
-        setMap(newMap);
+          const options = {
+            center: new window.kakao.maps.LatLng(35.1795543, 129.0756416), // 부산 시청 중심
+            level: 7
+          };
+          
+          const newMap = new window.kakao.maps.Map(container, options);
+          setMap(newMap);
 
-        window.kakao.maps.event.addListener(newMap, 'click', function(mouseEvent: any) {
-          setSelectedLatLng({ lat: mouseEvent.latLng.getLat(), lng: mouseEvent.latLng.getLng() });
+          window.kakao.maps.event.addListener(newMap, 'click', function(mouseEvent: any) {
+            setSelectedLatLng({ lat: mouseEvent.latLng.getLat(), lng: mouseEvent.latLng.getLng() });
+          });
         });
-      });
+      }
     };
 
-    if (window.kakao && window.kakao.maps) {
-      initMap();
-    } else {
+    // 스크립트가 이미 문서에 있는지 확인 (Next.js 특유의 두 번 실행 방지)
+    const existingScript = document.getElementById('kakao-map-script');
+    
+    if (!existingScript) {
       const script = document.createElement('script');
+      script.id = 'kakao-map-script';
       script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=d19d054a9b9daf8e0fa961cba989ef2b&autoload=false`;
       script.async = true;
       document.head.appendChild(script);
+      
       script.onload = () => initMap();
+    } else {
+      initMap();
     }
   }, []); 
 
+  // 핫플 마커 찍기
   useEffect(() => {
     if (!map || places.length === 0) return;
 
@@ -128,10 +136,8 @@ export default function HotPlacePage() {
           <div className="w-full lg:w-2/3 bg-white p-4 rounded-3xl shadow-md border border-blue-100">
             <p className="text-sm font-bold text-blue-600 mb-4 ml-2">👇 지도에서 원하는 위치를 클릭하면 핫플을 등록할 수 있어요!</p>
             
-            {/* ⭐️ 지도 상자 디자인 단순화 & React ref 적용 (지도가 찌그러지지 않습니다!) */}
-            <div ref={mapRef} className="w-full h-[500px] rounded-2xl border border-gray-200 bg-gray-100 relative overflow-hidden">
-            </div>
-
+            {/* ⭐️ 상자 안을 텅텅 비웠습니다! 카카오 지도가 아주 좋아할 겁니다. */}
+            <div id="map" className="w-full h-[500px] rounded-2xl border border-gray-200 bg-gray-100 relative overflow-hidden"></div>
           </div>
 
           <div className="w-full lg:w-1/3 space-y-6">
