@@ -1,31 +1,28 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-
-declare global {
-  interface Window {
-    kakao: any;
-  }
-}
+// ⭐️ 복잡한 스크립트 로딩을 한 줄로 끝내주는 마법의 공식 도구!
+import { Map, MapMarker, CustomOverlayMap, useKakaoLoader } from 'react-kakao-maps-sdk';
 
 export default function HotPlacePage() {
-  const [map, setMap] = useState<any>(null);
   const [places, setPlaces] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
-  
-  // ⭐️ 진단용 메시지 상태 추가
-  const [status, setStatus] = useState("카카오 지도를 연결하는 중입니다... 🚀");
 
   const [selectedLatLng, setSelectedLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('가성비 맛집 🍔');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
 
   const router = useRouter();
-  const mapRef = useRef<HTMLDivElement>(null);
+
+  // ⭐️ 여기서 카카오 지도를 가장 안전하게 불러옵니다!
+  const [loading, error] = useKakaoLoader({
+    appkey: "d19d054a9b9daf8e0fa961cba989ef2b",
+  });
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -37,74 +34,6 @@ export default function HotPlacePage() {
     if (data) setPlaces(data);
   };
 
-  useEffect(() => {
-    const initMap = () => {
-      if (!window.kakao || !window.kakao.maps) {
-        setStatus("❌ 에러: 카카오 지도 스크립트를 불러오지 못했습니다.");
-        return;
-      }
-
-      window.kakao.maps.load(() => {
-        if (!mapRef.current) return;
-        
-        try {
-          const options = {
-            center: new window.kakao.maps.LatLng(35.1795543, 129.0756416), // 부산 시청 중심
-            level: 7
-          };
-          
-          const newMap = new window.kakao.maps.Map(mapRef.current, options);
-          setMap(newMap);
-          setStatus(""); // 지도가 성공적으로 그려지면 메시지 지움
-          
-          window.kakao.maps.event.addListener(newMap, 'click', function(mouseEvent: any) {
-            setSelectedLatLng({ lat: mouseEvent.latLng.getLat(), lng: mouseEvent.latLng.getLng() });
-          });
-        } catch (error: any) {
-          setStatus(`❌ 렌더링 에러: ${error.message}`);
-        }
-      });
-    };
-
-    const scriptId = 'kakao-map-script';
-    let script = document.getElementById(scriptId) as HTMLScriptElement;
-
-    if (!script) {
-      script = document.createElement('script');
-      script.id = scriptId;
-      script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=d19d054a9b9daf8e0fa961cba989ef2b&autoload=false`;
-      script.async = true;
-      script.onload = initMap;
-      script.onerror = () => setStatus("❌ 에러: 스크립트 다운로드 차단됨 (도메인 불일치 또는 방화벽)");
-      document.head.appendChild(script);
-    } else {
-      initMap();
-    }
-  }, []); 
-
-  // 핫플 마커 찍기
-  useEffect(() => {
-    if (!map || places.length === 0) return;
-
-    places.forEach(place => {
-      const markerPosition = new window.kakao.maps.LatLng(place.lat, place.lng);
-      const marker = new window.kakao.maps.Marker({ position: markerPosition });
-      marker.setMap(map);
-
-      const iwContent = `
-        <div style="padding:10px; width:200px; border-radius:10px;">
-          <h4 style="font-weight:bold; color:#1e40af; margin-bottom:4px;">${place.title}</h4>
-          <span style="font-size:11px; background:#f3f4f6; padding:2px 6px; border-radius:4px; font-weight:bold;">${place.category}</span>
-          <p style="font-size:12px; margin-top:6px; color:#4b5563;">${place.description}</p>
-        </div>
-      `;
-      const infowindow = new window.kakao.maps.InfoWindow({ content: iwContent });
-
-      window.kakao.maps.event.addListener(marker, 'mouseover', () => infowindow.open(map, marker));
-      window.kakao.maps.event.addListener(marker, 'mouseout', () => infowindow.close());
-    });
-  }, [map, places]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -112,7 +41,7 @@ export default function HotPlacePage() {
       return;
     }
     if (!selectedLatLng) return;
-    
+
     setSubmitting(true);
     const { error } = await supabase.from('hotplaces').insert([{
       title, category, description, lat: selectedLatLng.lat, lng: selectedLatLng.lng
@@ -142,22 +71,62 @@ export default function HotPlacePage() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="w-full lg:w-2/3 bg-white p-4 rounded-3xl shadow-md border border-blue-100">
             <p className="text-sm font-bold text-blue-600 mb-4 ml-2">👇 지도에서 원하는 위치를 클릭하면 핫플을 등록할 수 있어요!</p>
-            
-            {/* ⭐️ 절대 무너지지 않는 강력한 높이(500px) 지정! */}
-            <div 
-              ref={mapRef} 
-              style={{ width: '100%', height: '500px', backgroundColor: '#f3f4f6', borderRadius: '1rem' }}
-              className="flex items-center justify-center text-gray-500 font-bold relative overflow-hidden border border-gray-200"
-            >
-              {status}
-            </div>
 
+            {/* ⭐️ 로딩 상태와 에러 상태를 화면에 직접 보여줍니다 */}
+            {error ? (
+              <div className="w-full h-[500px] flex items-center justify-center bg-red-50 text-red-500 font-bold rounded-2xl border border-red-200 text-center p-6 leading-relaxed">
+                ❌ 카카오 지도를 가져오지 못했습니다.<br/><br/>
+                현재 사용 중인 인터넷(학교/관공서) 방화벽에서<br/>카카오 접속을 차단했을 확률이 99%입니다.<br/>스마트폰 데이터(핫스팟)로 연결해 보세요!
+              </div>
+            ) : loading ? (
+              <div className="w-full h-[500px] flex items-center justify-center bg-gray-100 text-gray-400 font-bold rounded-2xl border border-gray-200">
+                지도를 안전하게 불러오는 중입니다... 🚀
+              </div>
+            ) : (
+              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative">
+                <Map
+                  center={{ lat: 35.1795543, lng: 129.0756416 }}
+                  style={{ width: "100%", height: "500px" }}
+                  level={7}
+                  onClick={(_t, mouseEvent) => setSelectedLatLng({
+                    lat: mouseEvent.latLng.getLat(),
+                    lng: mouseEvent.latLng.getLng(),
+                  })}
+                >
+                  {/* 클릭한 곳에 꽂히는 임시 빨간 핀 */}
+                  {selectedLatLng && (
+                    <MapMarker position={selectedLatLng} image={{ src: 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png', size: { width: 24, height: 35 } }} />
+                  )}
+
+                  {/* 데이터베이스에 저장된 핫플 마커들 */}
+                  {places.map((place) => (
+                    <div key={place.id}>
+                      <MapMarker
+                        position={{ lat: place.lat, lng: place.lng }}
+                        onMouseOver={() => setHoveredPlace(place.id)}
+                        onMouseOut={() => setHoveredPlace(null)}
+                      />
+                      {/* 마우스 올리면 뜨는 예쁜 말풍선 */}
+                      {hoveredPlace === place.id && (
+                        <CustomOverlayMap position={{ lat: place.lat, lng: place.lng }} yAnchor={1.5}>
+                          <div className="bg-white p-3 rounded-xl shadow-lg border border-blue-200 w-48 z-10 absolute -left-24">
+                            <h4 className="font-bold text-blue-800 text-sm mb-1">{place.title}</h4>
+                            <span className="text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-bold">{place.category}</span>
+                            <p className="text-xs mt-2 text-gray-600">{place.description}</p>
+                          </div>
+                        </CustomOverlayMap>
+                      )}
+                    </div>
+                  ))}
+                </Map>
+              </div>
+            )}
           </div>
 
           <div className="w-full lg:w-1/3 space-y-6">
             <div className="bg-white p-6 rounded-3xl shadow-md border border-blue-100">
               <h3 className="font-bold text-xl mb-4">📍 내 아지트 공유하기</h3>
-              
+
               {!selectedLatLng ? (
                 <div className="bg-blue-50 text-blue-800 p-6 rounded-2xl font-bold text-center border border-dashed border-blue-300">
                   먼저 왼쪽 지도에서<br/>공유하고 싶은 장소를 클릭해주세요!
@@ -166,7 +135,7 @@ export default function HotPlacePage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="text-xs font-bold text-gray-400">위치가 선택되었습니다! 내용을 입력해주세요.</div>
                   <input className="w-full p-3 border rounded-xl bg-gray-50 text-gray-900 font-bold" placeholder="장소 이름 (예: 동래역 앞 스터디카페)" value={title} onChange={(e) => setTitle(e.target.value)} required />
-                  
+
                   <select className="w-full p-3 border rounded-xl bg-gray-50 text-gray-900 font-bold" value={category} onChange={(e) => setCategory(e.target.value)}>
                     <option>가성비 맛집 🍔</option>
                     <option>스터디 카페 📚</option>
@@ -175,7 +144,7 @@ export default function HotPlacePage() {
                   </select>
 
                   <textarea className="w-full p-3 border rounded-xl bg-gray-50 text-gray-900 h-24" placeholder="이곳의 꿀팁이나 특징을 알려주세요!" value={description} onChange={(e) => setDescription(e.target.value)} required />
-                  
+
                   <button type="submit" disabled={submitting} className="w-full bg-blue-700 text-white font-bold p-4 rounded-xl shadow-md hover:bg-blue-800 transition">
                     {submitting ? '등록 중...' : '지도에 핀 꽂기! 📌'}
                   </button>
