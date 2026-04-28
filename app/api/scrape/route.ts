@@ -3,26 +3,19 @@ import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-// ⭐️ 핵심 기술: 두 제목이 얼마나 비슷한지 검사하는 함수
 function getSimilarity(str1: string, str2: string) {
-  // 특수문자 빼고 띄어쓰기 기준으로 단어만 추출
   const clean1 = str1.replace(/[^\w\s가-힣]/g, '').split(/\s+/).filter(Boolean);
   const clean2 = str2.replace(/[^\w\s가-힣]/g, '').split(/\s+/).filter(Boolean);
-
   const set1 = new Set(clean1);
   const set2 = new Set(clean2);
-
-  // 겹치는 단어 개수 계산
   const intersection = new Set([...set1].filter(x => set2.has(x)));
   const union = new Set([...set1, ...set2]);
-
   if (union.size === 0) return 0;
-  return intersection.size / union.size; // 0 ~ 1 사이의 유사도 점수 반환
+  return intersection.size / union.size;
 }
 
 export async function GET() {
   try {
-    // 1. 기존 창고에서 최근 기사들의 '링크'와 '제목'을 모두 가져옵니다 (최근 100개)
     const { data: existingArticles } = await supabase
       .from('articles')
       .select('original_link, title')
@@ -38,7 +31,14 @@ export async function GET() {
 
     const items = [...text.matchAll(/<item>([\s\S]*?)<\/item>/g)];
     const newArticles = [];
-    const newTitlesForCheck = []; // 이번에 새로 수집한 제목들도 서로 중복되지 않게 기록
+    const newTitlesForCheck = [];
+
+    // 1️⃣ 지역 키워드 (부산임을 확인)
+    const busanSpecific = ['부산', '해운대', '수영구', '기장', '영도', '부산진구', '사하', '금정', '연제', '부울경'];
+    const commonDistricts = ['남구', '동구', '북구', '중구', '서구', '강서구']; // 타 지역과 겹치는 이름
+
+    // 2️⃣ 청소년/교육 키워드 (이 중 하나는 반드시 제목에 있어야 함)
+    const youthKeywords = ['청소년', '학생', '학교', '교복', '급식', '초등', '중등', '고등', '수험생', '대입', '교육청', '교사', '선생님', '어린이', '꿈드림', '청소년수련'];
 
     for (const item of items) {
       const content = item[1];
@@ -48,31 +48,36 @@ export async function GET() {
 
       if (titleMatch && linkMatch) {
         const rawTitle = titleMatch[1];
-        
-        // 구글 뉴스는 제목 뒤에 " - 조선일보" 처럼 언론사명이 붙으므로 떼어내고 핵심 제목만 비교
         const cleanTitle = rawTitle.split(' - ')[0]; 
         const link = linkMatch[1];
         const pubDate = pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString();
 
-        // 🛡️ 1차 방어: 이미 똑같은 링크가 있는가?
+        // 🛡️ 필터 1: 부산 지역 관련 기사인가?
+        const isBusanSpecific = busanSpecific.some(k => cleanTitle.includes(k));
+        const isCommonDistrictWithBusan = commonDistricts.some(k => cleanTitle.includes(k)) && cleanTitle.includes('부산');
+        
+        if (!isBusanSpecific && !isCommonDistrictWithBusan) continue;
+
+        // 🛡️ 필터 2: 청소년/교육 관련 주제인가? (가장 중요!)
+        const isYouthNews = youthKeywords.some(k => cleanTitle.includes(k));
+        if (!isYouthNews) continue; // 주제가 청소년이 아니면 버림 (예: 해운대 교통사고 등 차단)
+
+        // 1차 방어: 이미 똑같은 링크가 있는가?
         if (existingLinks.includes(link)) continue;
 
-        // 🛡️ 2차 방어: 제목이 기존 기사나 방금 담은 기사와 너무 비슷한가?
+        // 2차 방어: 유사도 검사
         let isDuplicate = false;
         const allTitlesToCheck = [...existingTitles, ...newTitlesForCheck];
 
         for (const oldTitle of allTitlesToCheck) {
           const oldCleanTitle = oldTitle.split(' - ')[0];
           const similarity = getSimilarity(cleanTitle, oldCleanTitle);
-
-          // ⭐️ 유사도 점수가 0.35(35%) 이상이면 같은 내용의 기사로 간주하고 컷!
           if (similarity > 0.35) { 
             isDuplicate = true;
             break;
           }
         }
 
-        // 모든 방어를 통과한 '진짜 완전히 새로운' 뉴스만 담습니다.
         if (!isDuplicate) {
           newArticles.push({
             title: rawTitle,
@@ -81,13 +86,12 @@ export async function GET() {
             source_type: 'scraped',
             published_at: pubDate,
           });
-          newTitlesForCheck.push(rawTitle); // 방금 담은 제목도 검사망에 추가
+          newTitlesForCheck.push(rawTitle);
         }
       }
     }
 
     const articlesToInsert = newArticles.slice(0, 15);
-
     if (articlesToInsert.length > 0) {
       await supabase.from('articles').insert(articlesToInsert);
     }
