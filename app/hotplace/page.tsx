@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import Script from 'next/script';
+import Script from 'next/script'; // ⭐️ Next.js 전용 스크립트 도구
 
 declare global {
   interface Window {
@@ -34,27 +34,26 @@ export default function HotPlacePage() {
     if (data) setPlaces(data);
   };
 
-  // ⭐️ 지도 로딩 안정화 
-  const loadKakaoMap = () => {
-    if (window.kakao && window.kakao.maps) {
-      window.kakao.maps.load(() => {
-        const container = document.getElementById('map');
-        if (!container) return; // 컨테이너가 없으면 에러 방지
+  // ⭐️ 카카오 스크립트가 무사히 다운로드되면 자동으로 실행될 함수
+  const handleScriptLoad = () => {
+    window.kakao.maps.load(() => {
+      const container = document.getElementById('map');
+      if (!container) return;
 
-        const options = {
-          center: new window.kakao.maps.LatLng(35.1795543, 129.0756416),
-          level: 7
-        };
-        const newMap = new window.kakao.maps.Map(container, options);
-        setMap(newMap);
+      const options = {
+        center: new window.kakao.maps.LatLng(35.1795543, 129.0756416), // 부산 시청 중심
+        level: 7
+      };
+      const newMap = new window.kakao.maps.Map(container, options);
+      setMap(newMap);
 
-        window.kakao.maps.event.addListener(newMap, 'click', function(mouseEvent: any) {
-          setSelectedLatLng({ lat: mouseEvent.latLng.getLat(), lng: mouseEvent.latLng.getLng() });
-        });
+      window.kakao.maps.event.addListener(newMap, 'click', function(mouseEvent: any) {
+        setSelectedLatLng({ lat: mouseEvent.latLng.getLat(), lng: mouseEvent.latLng.getLng() });
       });
-    }
+    });
   };
 
+  // 핫플 마커 꽂기
   useEffect(() => {
     if (!map || places.length === 0) return;
 
@@ -104,11 +103,12 @@ export default function HotPlacePage() {
 
   return (
     <div className="min-h-screen bg-blue-50 py-10 px-4 text-gray-900">
-      {/* ⭐️ https:// 추가 및 beforeInteractive 설정으로 로딩 타이밍 변경 */}
+      
+      {/* ⭐️ 가장 안전한 Next.js 스크립트 로드 방식 */}
       <Script
-        strategy="beforeInteractive"
-        src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=d19d054a9b9daf8e0fa961cba989ef2b&autoload=false`}
-        onLoad={loadKakaoMap}
+        src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=d19d054a9b9daf8e0fa961cba989ef2b&autoload=false"
+        strategy="afterInteractive"
+        onLoad={handleScriptLoad}
       />
 
       <div className="max-w-6xl mx-auto">
@@ -121,7 +121,9 @@ export default function HotPlacePage() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="w-full lg:w-2/3 bg-white p-4 rounded-3xl shadow-md border border-blue-100">
             <p className="text-sm font-bold text-blue-600 mb-4 ml-2">👇 지도에서 원하는 위치를 클릭하면 핫플을 등록할 수 있어요!</p>
-            <div id="map" className="w-full h-[500px] rounded-2xl border border-gray-200"></div>
+            <div id="map" className="w-full h-[500px] rounded-2xl border border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 font-bold">
+              지도를 불러오는 중입니다... (계속 이 화면이면 광고 차단을 해제해주세요!)
+            </div>
           </div>
 
           <div className="w-full lg:w-1/3 space-y-6">
