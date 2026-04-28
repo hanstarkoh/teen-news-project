@@ -17,19 +17,18 @@ export default function Home() {
   const ITEMS_PER_PAGE = 10;
 
   const [isAdmin, setIsAdmin] = useState(false);
-  const [user, setUser] = useState<any>(null); // ⭐️ 일반 기자(독자) 로그인 상태 추가
+  const [user, setUser] = useState<any>(null); 
   const [isScraping, setIsScraping] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // 편집장(관리자) 체크
     const checkLogin = () => {
       if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') setIsAdmin(true);
       else setIsAdmin(false);
     };
     checkLogin();
     
-    // ⭐️ 일반 기자(독자) 체크
+    // 로그인한 유저 정보 가져오기
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
 
     fetchData();
@@ -90,23 +89,17 @@ export default function Home() {
   const filteredArticles = articles.filter(article => {
     const matchSearch = article.title.includes(searchTerm) || article.summary.includes(searchTerm);
     const matchFilter = filter === 'all' || article.source_type === filter;
-    
     const articleDate = new Date(article.published_at);
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
     if (end) end.setHours(23, 59, 59, 999);
-
     const matchStartDate = start ? articleDate >= start : true;
     const matchEndDate = end ? articleDate <= end : true;
-
     return matchSearch && matchFilter && matchStartDate && matchEndDate;
   });
 
   const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
-  const paginatedArticles = filteredArticles.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE, 
-    currentPage * ITEMS_PER_PAGE
-  );
+  const paginatedArticles = filteredArticles.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const defaultImage = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop";
 
@@ -121,9 +114,12 @@ export default function Home() {
           
           <div className="flex items-center gap-3 md:gap-4 flex-wrap justify-center">
             <a href="/bamboo" className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-green-600 transition">🎋 대나무숲</a>
-            <a href="/request" className="bg-yellow-400 text-blue-900 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-yellow-300 transition">📢 기사 제보하기</a>
+            
+            {/* ⭐️ 수정된 부분: 로그인(기자 혹은 편집장) 상태일 때만 '기사 제보하기' 버튼 노출 */}
+            {(user || isAdmin) && (
+              <a href="/request" className="bg-yellow-400 text-blue-900 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-yellow-300 transition">📢 기사 제보하기</a>
+            )}
 
-            {/* ⭐️ 일반 기자(독자) 로그인/로그아웃 버튼 */}
             {!isAdmin && (
               user ? (
                 <button onClick={handleUserLogout} className="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-gray-300 transition">기자 로그아웃</button>
@@ -149,7 +145,7 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* 이하 본문 내용은 이전과 동일하게 유지됩니다 */}
+      {/* 본문 생략 (기존과 동일) */}
       <main className="max-w-7xl mx-auto mt-8 p-4 flex flex-col md:flex-row gap-6">
         <aside className="w-full md:w-1/4 space-y-6">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
@@ -217,7 +213,7 @@ export default function Home() {
             </>
           )}
         </section>
-        
+
         <aside className="w-full md:w-1/4 space-y-6">
           <h3 className="font-bold text-gray-400 text-sm flex items-center gap-2"><span className="w-full h-px bg-gray-300"></span> AD <span className="w-full h-px bg-gray-300"></span></h3>
           <div className="flex flex-col gap-6">
