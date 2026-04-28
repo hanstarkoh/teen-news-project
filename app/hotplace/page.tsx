@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -14,6 +14,9 @@ export default function HotPlacePage() {
   const [map, setMap] = useState<any>(null);
   const [places, setPlaces] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
+  
+  // ⭐️ 진단용 메시지 상태 추가
+  const [status, setStatus] = useState("카카오 지도를 연결하는 중입니다... 🚀");
 
   const [selectedLatLng, setSelectedLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [title, setTitle] = useState('');
@@ -22,6 +25,7 @@ export default function HotPlacePage() {
   const [submitting, setSubmitting] = useState(false);
 
   const router = useRouter();
+  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -33,43 +37,46 @@ export default function HotPlacePage() {
     if (data) setPlaces(data);
   };
 
-  // ⭐️ 중복 로딩 방지 & 완벽한 타이밍 컨트롤
   useEffect(() => {
     const initMap = () => {
-      if (window.kakao && window.kakao.maps) {
-        window.kakao.maps.load(() => {
-          const container = document.getElementById('map');
-          if (!container) return;
-          
-          // 만약 상자 안에 글씨가 있다면 깨끗하게 비웁니다
-          container.innerHTML = '';
+      if (!window.kakao || !window.kakao.maps) {
+        setStatus("❌ 에러: 카카오 지도 스크립트를 불러오지 못했습니다.");
+        return;
+      }
 
+      window.kakao.maps.load(() => {
+        if (!mapRef.current) return;
+        
+        try {
           const options = {
             center: new window.kakao.maps.LatLng(35.1795543, 129.0756416), // 부산 시청 중심
             level: 7
           };
           
-          const newMap = new window.kakao.maps.Map(container, options);
+          const newMap = new window.kakao.maps.Map(mapRef.current, options);
           setMap(newMap);
-
+          setStatus(""); // 지도가 성공적으로 그려지면 메시지 지움
+          
           window.kakao.maps.event.addListener(newMap, 'click', function(mouseEvent: any) {
             setSelectedLatLng({ lat: mouseEvent.latLng.getLat(), lng: mouseEvent.latLng.getLng() });
           });
-        });
-      }
+        } catch (error: any) {
+          setStatus(`❌ 렌더링 에러: ${error.message}`);
+        }
+      });
     };
 
-    // 스크립트가 이미 문서에 있는지 확인 (Next.js 특유의 두 번 실행 방지)
-    const existingScript = document.getElementById('kakao-map-script');
-    
-    if (!existingScript) {
-      const script = document.createElement('script');
-      script.id = 'kakao-map-script';
+    const scriptId = 'kakao-map-script';
+    let script = document.getElementById(scriptId) as HTMLScriptElement;
+
+    if (!script) {
+      script = document.createElement('script');
+      script.id = scriptId;
       script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=d19d054a9b9daf8e0fa961cba989ef2b&autoload=false`;
       script.async = true;
+      script.onload = initMap;
+      script.onerror = () => setStatus("❌ 에러: 스크립트 다운로드 차단됨 (도메인 불일치 또는 방화벽)");
       document.head.appendChild(script);
-      
-      script.onload = () => initMap();
     } else {
       initMap();
     }
@@ -136,8 +143,15 @@ export default function HotPlacePage() {
           <div className="w-full lg:w-2/3 bg-white p-4 rounded-3xl shadow-md border border-blue-100">
             <p className="text-sm font-bold text-blue-600 mb-4 ml-2">👇 지도에서 원하는 위치를 클릭하면 핫플을 등록할 수 있어요!</p>
             
-            {/* ⭐️ 상자 안을 텅텅 비웠습니다! 카카오 지도가 아주 좋아할 겁니다. */}
-            <div id="map" className="w-full h-[500px] rounded-2xl border border-gray-200 bg-gray-100 relative overflow-hidden"></div>
+            {/* ⭐️ 절대 무너지지 않는 강력한 높이(500px) 지정! */}
+            <div 
+              ref={mapRef} 
+              style={{ width: '100%', height: '500px', backgroundColor: '#f3f4f6', borderRadius: '1rem' }}
+              className="flex items-center justify-center text-gray-500 font-bold relative overflow-hidden border border-gray-200"
+            >
+              {status}
+            </div>
+
           </div>
 
           <div className="w-full lg:w-1/3 space-y-6">
