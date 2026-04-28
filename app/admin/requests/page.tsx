@@ -21,22 +21,36 @@ export default function AdminRequests() {
     if (data) setRequests(data);
   };
 
-  const handleApprove = async (req: any) => {
+ const handleApprove = async (req: any) => {
     if (window.confirm('이 제보를 정식 기사로 등록할까요?')) {
-      // 1. 기사 테이블(articles)로 복사 (이때 제보받은 이미지를 thumbnail_url에 쏙 넣어줍니다!)
+      // 1. 기사 등록
       const { error: insError } = await supabase.from('articles').insert([{
-        title: `[제보보도] ${req.title}`,
-        summary: `제보자: ${req.author}\n\n${req.content}`,
-        thumbnail_url: req.image_url || '', // ⭐️ 제보 이미지가 있으면 넣고, 없으면 비워둠
+        title: `[기자단] ${req.title}`,
+        summary: `기자: ${req.author}\n\n${req.content}`,
+        thumbnail_url: req.image_url || '',
         source_type: 'manual',
         published_at: new Date().toISOString()
       }]);
 
-      if (insError) {
-        alert('기사 등록 실패');
-      } else {
+      if (!insError) {
+        // 2. 기자 점수 및 배지 업데이트
+        if (req.user_id) {
+          const { data: profile } = await supabase.from('profiles').select('points').eq('id', req.user_id).single();
+          const newPoints = (profile?.points || 0) + 10;
+          let newBadge = '새싹 기자';
+          if (newPoints >= 100) newBadge = '특종 기자';
+          else if (newPoints >= 50) newBadge = '베테랑 기자';
+          else if (newPoints >= 30) newBadge = '정식 기자';
+
+          await supabase.from('profiles').update({ 
+            points: newPoints, 
+            badge: newBadge,
+            report_count: supabase.rpc('increment', { row_id: req.user_id }) // 제보수 증가
+          }).eq('id', req.user_id);
+        }
+
         await supabase.from('requests').delete().eq('id', req.id);
-        alert('정식 기사로 등록되었습니다! 🎉');
+        alert('기사 게시 및 포인트 지급 완료! 🎉');
         fetchRequests();
       }
     }

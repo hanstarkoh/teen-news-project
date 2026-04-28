@@ -17,15 +17,21 @@ export default function Home() {
   const ITEMS_PER_PAGE = 10;
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<any>(null); // ⭐️ 일반 기자(독자) 로그인 상태 추가
   const [isScraping, setIsScraping] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
+    // 편집장(관리자) 체크
     const checkLogin = () => {
       if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') setIsAdmin(true);
       else setIsAdmin(false);
     };
     checkLogin();
+    
+    // ⭐️ 일반 기자(독자) 체크
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+
     fetchData();
     window.addEventListener('storage', checkLogin);
     return () => window.removeEventListener('storage', checkLogin);
@@ -44,9 +50,16 @@ export default function Home() {
     setLoading(false);
   };
 
-  const handleLogout = () => {
+  const handleAdminLogout = () => {
     localStorage.removeItem('byNewsAdmin');
     setIsAdmin(false);
+    alert('편집장 모드 로그아웃 되었습니다.');
+    window.location.reload();
+  };
+
+  const handleUserLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
     alert('로그아웃 되었습니다.');
     window.location.reload();
   };
@@ -109,6 +122,15 @@ export default function Home() {
           <div className="flex items-center gap-3 md:gap-4 flex-wrap justify-center">
             <a href="/bamboo" className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-green-600 transition">🎋 대나무숲</a>
             <a href="/request" className="bg-yellow-400 text-blue-900 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-yellow-300 transition">📢 기사 제보하기</a>
+
+            {/* ⭐️ 일반 기자(독자) 로그인/로그아웃 버튼 */}
+            {!isAdmin && (
+              user ? (
+                <button onClick={handleUserLogout} className="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-gray-300 transition">기자 로그아웃</button>
+              ) : (
+                <a href="/login" className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-600 transition">🔑 기자단 로그인</a>
+              )
+            )}
             
             {isAdmin ? (
               <>
@@ -118,7 +140,7 @@ export default function Home() {
                 <a href="/admin/requests" className="bg-orange-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-orange-600 transition">📬 제보 확인</a>
                 <a href="/write" className="bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-600 transition">✍️ 기사 쓰기</a>
                 <a href="/ad" className="bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-600 transition">💸 광고 추가</a>
-                <button onClick={handleLogout} className="bg-white text-gray-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">로그아웃</button>
+                <button onClick={handleAdminLogout} className="bg-white text-gray-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">로그아웃</button>
               </>
             ) : (
               <a href="/write" className="text-blue-300 hover:text-white transition-colors text-lg" title="관리자 페이지">🔒</a>
@@ -127,11 +149,11 @@ export default function Home() {
         </div>
       </nav>
 
+      {/* 이하 본문 내용은 이전과 동일하게 유지됩니다 */}
       <main className="max-w-7xl mx-auto mt-8 p-4 flex flex-col md:flex-row gap-6">
         <aside className="w-full md:w-1/4 space-y-6">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <h3 className="font-bold text-gray-800 mb-3 text-lg">🔍 기사 검색</h3>
-            {/* ⭐️ text-gray-900 추가로 글씨가 선명하게 보입니다 */}
             <input type="text" placeholder="검색어를 입력하세요..." className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
           
@@ -156,7 +178,6 @@ export default function Home() {
         </aside>
 
         <section className="w-full md:w-2/4 flex flex-col">
-          {/* 생략 (기존 기사 리스트 로직 그대로 유지) */}
           <div className="flex justify-between items-end mb-6 border-b-4 border-blue-700 pb-2">
             <h2 className="text-2xl font-extrabold text-gray-900">{filter === 'all' ? '최신 뉴스' : filter === 'manual' ? '단독 보도 뉴스' : '타 언론사 주요뉴스'}</h2>
             <span className="text-gray-500 font-bold text-sm">총 {filteredArticles.length}개</span>
@@ -197,7 +218,6 @@ export default function Home() {
           )}
         </section>
         
-        {/* 생략 (기존 광고 리스트 로직 그대로 유지) */}
         <aside className="w-full md:w-1/4 space-y-6">
           <h3 className="font-bold text-gray-400 text-sm flex items-center gap-2"><span className="w-full h-px bg-gray-300"></span> AD <span className="w-full h-px bg-gray-300"></span></h3>
           <div className="flex flex-col gap-6">
