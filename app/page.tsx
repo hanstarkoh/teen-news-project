@@ -107,7 +107,10 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-3 md:gap-4 flex-wrap justify-center">
+            {/* ⭐️ 대나무숲 버튼 추가 완료! */}
+            <a href="/bamboo" className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-green-600 transition">🎋 대나무숲</a>
             <a href="/request" className="bg-yellow-400 text-blue-900 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-yellow-300 transition">📢 기사 제보하기</a>
+            
             {isAdmin ? (
               <>
                 <button onClick={handleScrape} disabled={isScraping} className={`px-3 py-2 rounded-lg text-sm font-bold shadow transition ${isScraping ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600 text-white'}`}>
@@ -119,7 +122,6 @@ export default function Home() {
                 <button onClick={handleLogout} className="bg-white text-gray-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">로그아웃</button>
               </>
             ) : (
-              /* ⭐️ 거슬리던 커다란 로그인 버튼 대신 작고 귀여운 비밀 자물쇠 달기! */
               <a href="/write" className="text-blue-300 hover:text-white transition-colors text-lg" title="관리자 페이지">🔒</a>
             )}
           </div>
