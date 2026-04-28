@@ -113,9 +113,11 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-3 md:gap-4 flex-wrap justify-center">
+            {/* ⭐️ 새로 추가된 핫플 지도 버튼 */}
+            <a href="/hotplace" className="bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-600 transition">🗺️ 핫플 지도</a>
+            
             <a href="/bamboo" className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-green-600 transition">🎋 대나무숲</a>
             
-            {/* ⭐️ 수정된 부분: 로그인(기자 혹은 편집장) 상태일 때만 '기사 제보하기' 버튼 노출 */}
             {(user || isAdmin) && (
               <a href="/request" className="bg-yellow-400 text-blue-900 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-yellow-300 transition">📢 기사 제보하기</a>
             )}
@@ -145,7 +147,6 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* 본문 생략 (기존과 동일) */}
       <main className="max-w-7xl mx-auto mt-8 p-4 flex flex-col md:flex-row gap-6">
         <aside className="w-full md:w-1/4 space-y-6">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
