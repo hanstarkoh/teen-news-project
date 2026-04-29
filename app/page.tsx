@@ -15,6 +15,7 @@ export default function Home() {
   
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+  const PAGE_GROUP_SIZE = 10; // ⭐️ 한 번에 보여줄 페이지 번호 개수 (10개)
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<any>(null); 
@@ -28,9 +29,7 @@ export default function Home() {
     };
     checkLogin();
     
-    // 로그인한 유저 정보 가져오기
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
-
     fetchData();
     window.addEventListener('storage', checkLogin);
     return () => window.removeEventListener('storage', checkLogin);
@@ -98,8 +97,13 @@ export default function Home() {
     return matchSearch && matchFilter && matchStartDate && matchEndDate;
   });
 
+  // ⭐️ 페이징 계산 로직 추가
   const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
   const paginatedArticles = filteredArticles.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  const currentGroup = Math.ceil(currentPage / PAGE_GROUP_SIZE);
+  const startPage = (currentGroup - 1) * PAGE_GROUP_SIZE + 1;
+  const endPage = Math.min(startPage + PAGE_GROUP_SIZE - 1, totalPages);
 
   const defaultImage = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop";
 
@@ -113,9 +117,7 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-3 md:gap-4 flex-wrap justify-center">
-            {/* ⭐️ 새로 추가된 핫플 지도 버튼 */}
             <a href="/hotplace" className="bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-600 transition">🗺️ 핫플 지도</a>
-            
             <a href="/bamboo" className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-green-600 transition">🎋 대나무숲</a>
             
             {(user || isAdmin) && (
@@ -204,11 +206,42 @@ export default function Home() {
                   ))
                 )}
               </div>
+
+              {/* ⭐️ 화살표가 적용된 새로운 페이징 UI */}
               {totalPages > 1 && (
-                <div className="flex justify-center gap-2 mt-10">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button key={page} onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`w-10 h-10 rounded-xl font-bold transition-all shadow-sm ${currentPage === page ? 'bg-blue-700 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}>{page}</button>
+                <div className="flex justify-center items-center gap-2 mt-10">
+                  {/* 이전 10개로 넘어가기 버튼 */}
+                  {startPage > 1 && (
+                    <button 
+                      onClick={() => { setCurrentPage(startPage - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                      className="w-10 h-10 rounded-xl font-bold transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center justify-center"
+                      title="이전 페이지"
+                    >
+                      ◀
+                    </button>
+                  )}
+
+                  {/* 1~10 단위 페이지 번호 */}
+                  {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map(page => (
+                    <button 
+                      key={page} 
+                      onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                      className={`w-10 h-10 rounded-xl font-bold transition-all shadow-sm ${currentPage === page ? 'bg-blue-700 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}
+                    >
+                      {page}
+                    </button>
                   ))}
+
+                  {/* 다음 10개로 넘어가기 버튼 */}
+                  {endPage < totalPages && (
+                    <button 
+                      onClick={() => { setCurrentPage(endPage + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                      className="w-10 h-10 rounded-xl font-bold transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center justify-center"
+                      title="다음 페이지"
+                    >
+                      ▶
+                    </button>
+                  )}
                 </div>
               )}
             </>
