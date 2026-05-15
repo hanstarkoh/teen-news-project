@@ -4,159 +4,152 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 export default function WritePage() {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [password, setPassword] = useState('');
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [publishedAt, setPublishedAt] = useState('');
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [sourceType, setSourceType] = useState('manual');
+  const [originalLink, setOriginalLink] = useState('');
+  
+  // ⭐️ AI 자동 생성용 상태
+  const [keywords, setKeywords] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // VIP 출입증 확인
-    if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') {
-      setIsAdmin(true);
+    const checkLogin = () => {
+      if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') {
+        setIsAdmin(true);
+      } else {
+        alert('편집장 권한이 필요합니다!');
+        router.push('/');
+      }
+    };
+    checkLogin();
+  }, [router]);
+
+  // ⭐️ AI 기사 작성 실행 함수
+  const handleGenerateAI = async () => {
+    if (!keywords.trim()) {
+      alert('취재 메모나 키워드를 먼저 입력해주세요!');
+      return;
     }
-
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    setPublishedAt(now.toISOString().slice(0, 16));
-  }, []);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === '1q2w3e4r!!') {
-      setIsAdmin(true);
-      localStorage.setItem('byNewsAdmin', 'true');
-    } else {
-      alert('비밀번호가 틀렸습니다! 편집장님만 접근할 수 있어요. 🚨');
+    
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/generate-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keywords })
+      });
+      
+      const data = await response.json();
+      if (data.title && data.content) {
+        setTitle(data.title);
+        setSummary(data.content);
+        alert('✨ AI 기자가 성공적으로 기사를 작성했습니다! 내용을 검토하고 수정해보세요.');
+      } else {
+        alert('기사 작성에 실패했습니다.');
+      }
+    } catch (err) {
+      alert('AI 서버와 통신 중 오류가 발생했습니다.');
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('byNewsAdmin');
-    setIsAdmin(false);
-    alert('로그아웃 되었습니다. 일반 독자 모드로 돌아갑니다.');
+    setIsGenerating(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) return;
+
     const { error } = await supabase.from('articles').insert([{
-      title: title,
-      summary: summary,
-      thumbnail_url: imageUrl,
-      source_type: 'manual',
-      published_at: new Date(publishedAt).toISOString(),
+      title,
+      summary,
+      thumbnail_url: thumbnailUrl,
+      source_type: sourceType,
+      original_link: originalLink,
+      published_at: new Date().toISOString(),
     }]);
 
     if (error) {
-      alert('저장 실패 ㅜㅜ');
+      alert('기사 등록 실패: ' + error.message);
     } else {
-      alert('BY NEWS 기사 등록 완료! 🎉');
+      alert('🎉 기사가 성공적으로 발행되었습니다!');
       router.push('/');
     }
   };
 
-  // ===================== [1. 로그인 화면] =====================
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4 relative">
-        {/* ⭐️ 비상구: 홈으로 돌아가기 */}
-        <button 
-          onClick={() => router.push('/')} 
-          className="absolute top-8 left-8 text-gray-500 hover:text-blue-600 font-bold transition-colors flex items-center gap-2"
-        >
-          ← 홈으로 돌아가기
-        </button>
+  if (!isAdmin) return null;
 
-        <div className="max-w-sm w-full bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-black text-blue-600 mb-2">🌊 BY NEWS 데스크</h1>
-            <p className="text-gray-500 text-sm">관리자 전용 페이지입니다.</p>
-          </div>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input 
-              type="password" 
-              className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600" 
-              placeholder="비밀번호를 입력하세요" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
-            />
-            <button type="submit" className="w-full bg-gray-900 text-white p-4 rounded-xl font-bold hover:bg-black">
-              로그인
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // ===================== [2. 기사 작성 화면] =====================
   return (
-    <div className="max-w-2xl mx-auto p-10">
-      {/* ⭐️ 비상구: 홈으로 돌아가기 */}
-      <div className="mb-6">
-        <button 
-          onClick={() => router.push('/')} 
-          className="text-gray-500 hover:text-blue-600 font-bold transition-colors flex items-center gap-2"
-        >
-          ← 홈으로 돌아가기
-        </button>
+    <div className="min-h-screen bg-gray-50 py-10 px-4">
+      <div className="max-w-4xl mx-auto bg-white p-8 rounded-3xl shadow-md border border-gray-100">
+        <div className="flex justify-between items-center mb-8 border-b pb-4">
+          <h1 className="text-3xl font-black text-gray-900">✍️ BY NEWS 기사 작성</h1>
+          <button onClick={() => router.push('/')} className="text-gray-500 font-bold hover:text-blue-700">← 홈으로</button>
+        </div>
+
+        {/* ⭐️ AI 자동 생성 패널 */}
+        <div className="mb-10 bg-indigo-50 p-6 rounded-2xl border border-indigo-100 shadow-sm">
+          <h3 className="font-bold text-indigo-800 text-lg mb-2 flex items-center gap-2">
+            🤖 AI 어시스턴트에게 기사 맡기기
+          </h3>
+          <p className="text-sm text-indigo-600 mb-4">키워드나 행사 내용만 대충 적어주시면, AI가 완벽한 기사 초안을 써드립니다!</p>
+          <div className="flex flex-col gap-3">
+            <textarea 
+              className="w-full p-4 rounded-xl border border-indigo-200 focus:ring-2 focus:ring-indigo-500 outline-none text-gray-800"
+              placeholder="예: 이번 주말 송상현광장 청소년 플리마켓, 다양한 체험부스, 청소년들 호응 좋았음"
+              rows={3}
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+            />
+            <button 
+              type="button"
+              onClick={handleGenerateAI}
+              disabled={isGenerating}
+              className={`py-3 rounded-xl font-bold shadow-md transition-all text-white ${isGenerating ? 'bg-indigo-300' : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:shadow-lg'}`}
+            >
+              {isGenerating ? '⏳ AI 기자가 열심히 타이핑하는 중...' : '✨ 키워드로 기사 초안 자동 생성'}
+            </button>
+          </div>
+        </div>
+
+        {/* 기존 수동 작성 폼 */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">기사 제목</label>
+            <input className="w-full p-4 border rounded-xl bg-gray-50 focus:bg-white text-gray-900 font-bold text-lg" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">기사 본문</label>
+            <textarea className="w-full p-4 border rounded-xl bg-gray-50 focus:bg-white text-gray-900 h-64 leading-relaxed" value={summary} onChange={(e) => setSummary(e.target.value)} required />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">썸네일 이미지 URL (선택)</label>
+            <input type="url" className="w-full p-4 border rounded-xl bg-gray-50 focus:bg-white text-gray-900" placeholder="https://..." value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">기사 유형</label>
+              <select className="w-full p-4 border rounded-xl bg-gray-50 text-gray-900 font-bold" value={sourceType} onChange={(e) => setSourceType(e.target.value)}>
+                <option value="manual">단독 보도</option>
+                <option value="ad">배너 광고</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">원본 링크 (타 언론사/광고일 경우)</label>
+              <input type="url" className="w-full p-4 border rounded-xl bg-gray-50 focus:bg-white text-gray-900" value={originalLink} onChange={(e) => setOriginalLink(e.target.value)} disabled={sourceType === 'manual'} />
+            </div>
+          </div>
+
+          <button type="submit" className="w-full bg-blue-700 text-white font-bold py-5 rounded-2xl shadow-lg hover:bg-blue-800 transition text-lg mt-8">
+            📰 기사 최종 발행하기
+          </button>
+        </form>
       </div>
-
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-blue-600">✍️ BY NEWS 기사 발행</h1>
-        <button onClick={handleLogout} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-300">
-          편집장 로그아웃
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block mb-2 font-bold">기사 제목</label>
-          <input 
-            className="w-full p-3 border rounded-xl" 
-            value={title} 
-            onChange={(e) => setTitle(e.target.value)} 
-            required 
-          />
-        </div>
-        
-        <div>
-          <label className="block mb-2 font-bold text-red-500">발행 일시</label>
-          <input 
-            type="datetime-local" 
-            className="w-full p-3 border rounded-xl bg-red-50" 
-            value={publishedAt} 
-            onChange={(e) => setPublishedAt(e.target.value)} 
-            required 
-          />
-        </div>
-
-        <div>
-          <label className="block mb-2 font-bold">대표 사진 주소 (URL)</label>
-          <input 
-            className="w-full p-3 border rounded-xl" 
-            value={imageUrl} 
-            onChange={(e) => setImageUrl(e.target.value)} 
-          />
-        </div>
-
-        <div>
-          <label className="block mb-2 font-bold">기사 내용 (요약)</label>
-          <textarea 
-            className="w-full p-3 border rounded-xl h-40" 
-            value={summary} 
-            onChange={(e) => setSummary(e.target.value)} 
-            required 
-          />
-        </div>
-
-        <button type="submit" className="w-full bg-blue-600 text-white p-4 rounded-xl font-bold hover:bg-blue-700">
-          기사 발행하기
-        </button>
-      </form>
     </div>
   );
 }
