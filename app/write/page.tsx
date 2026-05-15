@@ -1,262 +1,195 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import imageCompression from 'browser-image-compression';
 
-export default function Home() {
-  const [articles, setArticles] = useState<any[]>([]);
-  const [ads, setAds] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function WritePage() {
+  const [title, setTitle] = useState('');
+  const [summary, setSummary] = useState('');
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [sourceType, setSourceType] = useState('manual');
+  const [originalLink, setOriginalLink] = useState('');
   
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [keywords, setKeywords] = useState('');
+  const [targetUrl, setTargetUrl] = useState('');
   
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
-  const PAGE_GROUP_SIZE = 10;
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isScrapingUrl, setIsScrapingUrl] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [isAdmin, setIsAdmin] = useState(false);
-  const [user, setUser] = useState<any>(null); 
-  const [isScraping, setIsScraping] = useState(false);
+  const [isChecking, setIsChecking] = useState(true); // ⭐️ 튕김 방지용 상태 추가!
   const router = useRouter();
 
+  // ⭐️ 보안 요원 교체: 약간의 여유를 두고 편집장님 확인
   useEffect(() => {
     const checkLogin = () => {
-      if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') setIsAdmin(true);
-      else setIsAdmin(false);
+      if (typeof window !== 'undefined') {
+        const adminStatus = localStorage.getItem('byNewsAdmin');
+        if (adminStatus === 'true') {
+          setIsAdmin(true);
+        } else {
+          alert('편집장 권한이 필요합니다!');
+          router.push('/');
+        }
+      }
+      setIsChecking(false); // 확인 완료
     };
-    checkLogin();
     
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-    fetchData();
-    window.addEventListener('storage', checkLogin);
-    return () => window.removeEventListener('storage', checkLogin);
-  }, []);
+    // 페이지 로딩 후 0.1초 뒤에 확인 (튕김 버그 완벽 방지)
+    setTimeout(checkLogin, 100);
+  }, [router]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filter, startDate, endDate]);
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const fetchData = async () => {
-    const { data } = await supabase.from('articles').select('*').order('published_at', { ascending: false });
-    if (data) {
-      setArticles(data.filter(item => item.source_type !== 'ad'));
-      setAds(data.filter(item => item.source_type === 'ad'));
-    }
-    setLoading(false);
-  };
-
-  const handleAdminLogout = () => {
-    localStorage.removeItem('byNewsAdmin');
-    setIsAdmin(false);
-    alert('편집장 모드 로그아웃 되었습니다.');
-    window.location.reload();
-  };
-
-  const handleUserLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    alert('로그아웃 되었습니다.');
-    window.location.reload();
-  };
-
-  const handleDeleteAd = async (id: number) => {
-    if (window.confirm('정말로 이 광고를 삭제하시겠습니까?')) {
-      await supabase.from('articles').delete().eq('id', id);
-      fetchData();
-    }
-  };
-
-  const handleScrape = async () => {
-    setIsScraping(true);
-    alert('🤖 로봇 기자가 타 언론사 뉴스를 수집합니다!');
+    setIsUploading(true);
     try {
-      const response = await fetch('/api/scrape');
-      const result = await response.json();
-      if (response.ok) {
-        alert(`✅ 수집 완료! 중복을 제외하고 ${result.count}개의 새 기사를 가져왔습니다.`);
-        fetchData();
+      const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1024, useWebWorker: true };
+      const compressedFile = await imageCompression(file, options);
+      const fileExt = compressedFile.name.split('.').pop() || 'jpeg';
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `article_images/${fileName}`;
+
+      const { data, error } = await supabase.storage.from('images').upload(filePath, compressedFile);
+      if (error) {
+        alert('이미지 업로드 실패: ' + error.message);
+      } else {
+        const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
+        setThumbnailUrl(publicUrl);
+        alert('📸 썸네일 업로드 성공!');
       }
     } catch (error) {
-      alert('❌ 실패');
+      alert('사진 업로드 중 오류가 발생했습니다.');
     }
-    setIsScraping(false);
+    setIsUploading(false);
   };
 
-  const filteredArticles = articles.filter(article => {
-    const matchSearch = article.title.includes(searchTerm) || article.summary.includes(searchTerm);
-    const matchFilter = filter === 'all' || article.source_type === filter;
-    const articleDate = new Date(article.published_at);
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    if (end) end.setHours(23, 59, 59, 999);
-    const matchStartDate = start ? articleDate >= start : true;
-    const matchEndDate = end ? articleDate <= end : true;
-    return matchSearch && matchFilter && matchStartDate && matchEndDate;
-  });
+  const handleGenerateAI = async () => {
+    if (!keywords.trim()) { alert('키워드를 먼저 입력해주세요!'); return; }
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/generate-article', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keywords })
+      });
+      const data = await response.json();
+      if (data.title && data.content) {
+        setTitle(data.title); setSummary(data.content);
+        alert('✨ 키워드 기반 AI 기사 초안 작성 완료!');
+      }
+    } catch (err) { alert('AI 서버 오류'); }
+    setIsGenerating(false);
+  };
 
-  const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
-  const paginatedArticles = filteredArticles.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const handleScrapeUrlAndGenerate = async () => {
+    if (!targetUrl.trim() || !targetUrl.startsWith('http')) {
+      alert('정확한 인터넷 주소(http://...)를 입력해주세요!'); return;
+    }
+    setIsScrapingUrl(true);
+    try {
+      const response = await fetch('/api/scrape-url', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUrl })
+      });
+      const data = await response.json();
+      
+      if (response.ok && data.title && data.content) {
+        setTitle(data.title); 
+        setSummary(data.content);
+        setOriginalLink(targetUrl); 
+        setSourceType('scraped'); 
+        alert('🕷️ 사이트 내용 스크래핑 및 기사 작성 성공!');
+      } else {
+        alert(`실패: ${data.error || '알 수 없는 오류'}`);
+      }
+    } catch (err) { alert('서버 통신 오류'); }
+    setIsScrapingUrl(false);
+  };
 
-  const currentGroup = Math.ceil(currentPage / PAGE_GROUP_SIZE);
-  const startPage = (currentGroup - 1) * PAGE_GROUP_SIZE + 1;
-  const endPage = Math.min(startPage + PAGE_GROUP_SIZE - 1, totalPages);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    const { error } = await supabase.from('articles').insert([{
+      title, summary, thumbnail_url: thumbnailUrl, source_type: sourceType,
+      original_link: originalLink, published_at: new Date().toISOString(),
+    }]);
+    if (error) alert('실패');
+    else { alert('🎉 발행 성공!'); router.push('/'); }
+  };
 
-  const defaultImage = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop";
+  // ⭐️ 신원 확인 중일 때는 하얀 화면 보여주기 (튕김 방지)
+  if (isChecking) return <div className="min-h-screen bg-gray-50 flex items-center justify-center font-bold text-gray-500">신원 확인 중...</div>;
+  if (!isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20">
-      <nav className="bg-blue-700 text-white p-4 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex flex-col items-center md:items-start">
-            <a href="/" className="text-2xl font-black tracking-tighter">🌊 BY NEWS</a>
-            <span className="text-[10px] md:text-xs font-bold text-blue-200">부산 청소년의 새로운 소식</span>
-          </div>
-          
-          <div className="flex items-center gap-3 md:gap-4 flex-wrap justify-center">
-            <a href="/hotplace" className="bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-600 transition">🗺️ 핫플 지도</a>
-            <a href="/bamboo" className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-green-600 transition">🎋 대나무숲</a>
-            
-            {(user || isAdmin) && (
-              <a href="/request" className="bg-yellow-400 text-blue-900 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-yellow-300 transition">📢 기사 제보하기</a>
-            )}
+    <div className="min-h-screen bg-gray-50 py-10 px-4">
+      <div className="max-w-4xl mx-auto bg-white p-8 rounded-3xl shadow-md border border-gray-100">
+        <h1 className="text-3xl font-black text-gray-900 mb-8 border-b pb-4">✍️ BY NEWS 기사 작성</h1>
 
-            {!isAdmin && (
-              user ? (
-                <button onClick={handleUserLogout} className="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-gray-300 transition">기자 로그아웃</button>
-              ) : (
-                <a href="/login" className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-600 transition">🔑 기자단 로그인</a>
-              )
-            )}
-            
-            {isAdmin ? (
-              <>
-                {/* ⭐️ 새로 추가된 AI 데스크 버튼 */}
-                <a href="/admin/desk" className="bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-purple-700 transition">🕵️‍♂️ AI 데스크</a>
-                <button onClick={handleScrape} disabled={isScraping} className={`px-3 py-2 rounded-lg text-sm font-bold shadow transition ${isScraping ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600 text-white'}`}>
-                  {isScraping ? '⏳ 수집 중...' : '🤖 타 언론사 수집'}
-                </button>
-                <a href="/admin/requests" className="bg-orange-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-orange-600 transition">📬 제보 확인</a>
-                <a href="/write" className="bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-600 transition">✍️ 기사 쓰기</a>
-                <a href="/ad" className="bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-600 transition">💸 광고 추가</a>
-                <button onClick={handleAdminLogout} className="bg-white text-gray-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">로그아웃</button>
-              </>
-            ) : (
-              <a href="/login" className="text-blue-300 hover:text-white transition-colors text-lg" title="관리자 페이지">🔒</a>
-            )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-indigo-800 mb-2">🤖 키워드로 기사 쓰기</h3>
+              <textarea className="w-full p-4 rounded-xl border border-indigo-200 outline-none mb-3 text-sm h-24" placeholder="예: 송상현광장 플리마켓, 호응 좋았음" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+            </div>
+            <button onClick={handleGenerateAI} disabled={isGenerating || isScrapingUrl} className="w-full py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition shadow">
+              {isGenerating ? '⏳ 작성 중...' : '✨ 초안 생성'}
+            </button>
+          </div>
+
+          <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-emerald-800 mb-2">🕷️ 주소(URL)로 긁어오기</h3>
+              <input type="url" className="w-full p-4 rounded-xl border border-emerald-200 outline-none mb-3 text-sm" placeholder="https://..." value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} />
+            </div>
+            <button onClick={handleScrapeUrlAndGenerate} disabled={isGenerating || isScrapingUrl} className="w-full py-3 rounded-xl font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow">
+              {isScrapingUrl ? '🕵️‍♂️ 잠입 분석 중...' : '🕸️ 기사 훔쳐오기'}
+            </button>
           </div>
         </div>
-      </nav>
 
-      <main className="max-w-7xl mx-auto mt-8 p-4 flex flex-col md:flex-row gap-6">
-        <aside className="w-full md:w-1/4 space-y-6">
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <h3 className="font-bold text-gray-800 mb-3 text-lg">🔍 기사 검색</h3>
-            <input type="text" placeholder="검색어를 입력하세요..." className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-          </div>
-          
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <h3 className="font-bold text-gray-800 mb-3 text-lg">📅 기간 검색</h3>
-            <div className="flex flex-col space-y-2">
-              <input type="date" className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              <span className="text-center text-gray-400 text-sm font-bold">~</span>
-              <input type="date" className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              <button onClick={() => {setStartDate(''); setEndDate('');}} className="mt-2 text-xs text-gray-500 hover:text-blue-600 underline text-right">초기화</button>
-            </div>
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-6 border-t pt-8">
+          <input className="w-full p-4 border rounded-xl font-bold text-lg text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="기사 제목" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <textarea className="w-full p-4 border rounded-xl h-64 leading-relaxed text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="본문 내용" value={summary} onChange={(e) => setSummary(e.target.value)} required />
 
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <h3 className="font-bold text-gray-800 mb-3 text-lg">📂 카테고리</h3>
-            <div className="flex flex-col space-y-2">
-              <button onClick={() => setFilter('all')} className={`p-3 rounded-xl text-left font-bold transition ${filter === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>🌐 전체 기사 보기</button>
-              <button onClick={() => setFilter('manual')} className={`p-3 rounded-xl text-left font-bold transition ${filter === 'manual' ? 'bg-red-500 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>🔥 BY NEWS 단독보도</button>
-              <button onClick={() => setFilter('scraped')} className={`p-3 rounded-xl text-left font-bold transition ${filter === 'scraped' ? 'bg-green-500 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>📰 타 언론사 기사</button>
-            </div>
-          </div>
-        </aside>
-
-        <section className="w-full md:w-2/4 flex flex-col">
-          <div className="flex justify-between items-end mb-6 border-b-4 border-blue-700 pb-2">
-            <h2 className="text-2xl font-extrabold text-gray-900">{filter === 'all' ? '최신 뉴스' : filter === 'manual' ? '단독 보도 뉴스' : '타 언론사 주요뉴스'}</h2>
-            <span className="text-gray-500 font-bold text-sm">총 {filteredArticles.length}개</span>
-          </div>
-          {loading ? (
-            <div className="text-center py-20 font-bold text-gray-500">뉴스를 불러오는 중입니다... 🌊</div>
-          ) : (
-            <>
-              <div className="space-y-6 flex-1">
-                {paginatedArticles.length === 0 ? (
-                  <div className="text-center bg-white p-10 rounded-2xl border border-gray-200 text-gray-500 font-bold">조건에 맞는 기사가 없습니다.</div>
-                ) : (
-                  paginatedArticles.map((article) => (
-                    <a key={article.id} href={article.source_type === 'manual' ? `/article/${article.id}` : (article.original_link || '#')} target={article.source_type === 'manual' ? '_self' : '_blank'} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row overflow-hidden border border-gray-100 group">
-                      <div className="w-full sm:w-1/3 h-48 sm:h-auto relative overflow-hidden">
-                        <img src={article.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="기사 썸네일"/>
-                        <div className={`absolute top-2 left-2 text-white text-xs font-bold px-2 py-1 rounded ${article.source_type === 'manual' ? 'bg-red-500' : 'bg-gray-800'}`}>{article.source_type === 'manual' ? '단독' : '타 언론사'}</div>
-                      </div>
-                      <div className="p-5 flex-1 flex flex-col justify-between">
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-700 transition-colors">{article.title}</h3>
-                          <p className="text-gray-600 text-sm line-clamp-2">{article.summary}</p>
-                        </div>
-                        <div className="text-xs text-gray-400 mt-4 font-medium">{new Date(article.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
-                      </div>
-                    </a>
-                  ))
-                )}
+          <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 space-y-4">
+            <label className="block text-sm font-bold text-blue-900">📸 대표 사진 등록</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
+                <p className="text-xs font-bold text-gray-400 mb-2">1. 파일 올리기</p>
+                <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading} className="text-xs w-full text-gray-700 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white cursor-pointer"/>
+                {isUploading && <p className="text-[10px] text-blue-600 mt-1">업로드 중...</p>}
               </div>
-
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-10">
-                  {startPage > 1 && (
-                    <button 
-                      onClick={() => { setCurrentPage(startPage - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                      className="w-10 h-10 rounded-xl font-bold transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center justify-center"
-                    >◀</button>
-                  )}
-                  {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map(page => (
-                    <button 
-                      key={page} 
-                      onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                      className={`w-10 h-10 rounded-xl font-bold transition-all shadow-sm ${currentPage === page ? 'bg-blue-700 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  {endPage < totalPages && (
-                    <button 
-                      onClick={() => { setCurrentPage(endPage + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                      className="w-10 h-10 rounded-xl font-bold transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center justify-center"
-                    >▶</button>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </section>
-
-        <aside className="w-full md:w-1/4 space-y-6">
-          <h3 className="font-bold text-gray-400 text-sm flex items-center gap-2"><span className="w-full h-px bg-gray-300"></span> AD <span className="w-full h-px bg-gray-300"></span></h3>
-          <div className="flex flex-col gap-6">
-            {ads.map((ad) => (
-              <div key={ad.id} className="group relative">
-                <a href={ad.original_link} target="_blank" rel="noopener noreferrer" className="block relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-200 bg-white aspect-[3/4]">
-                  <img src={ad.thumbnail_url} alt="배너 광고" className="w-full h-full object-cover"/>
-                  <div className="absolute top-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 m-1 rounded">AD</div>
-                </a>
-                {isAdmin && (
-                  <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-blue-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">수정</button>
-                    <button onClick={() => handleDeleteAd(ad.id)} className="bg-red-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">삭제</button>
-                  </div>
-                )}
+              <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
+                <p className="text-xs font-bold text-gray-400 mb-2">2. URL 주소 넣기</p>
+                <input type="url" className="w-full p-2 border rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500 text-gray-800" placeholder="https://..." value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} />
               </div>
-            ))}
+            </div>
+            {thumbnailUrl && (
+              <div className="mt-2 bg-white p-2 rounded-xl border flex flex-col items-center">
+                <img src={thumbnailUrl} alt="미리보기" className="max-h-48 rounded-lg shadow-sm" />
+                <button type="button" onClick={() => setThumbnailUrl('')} className="text-[10px] text-red-500 mt-2 font-bold underline">취소</button>
+              </div>
+            )}
           </div>
-        </aside>
-      </main>
+
+          <div className="grid grid-cols-2 gap-4">
+            <select className="p-4 border rounded-xl font-bold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500" value={sourceType} onChange={(e) => setSourceType(e.target.value)}>
+              <option value="manual">단독 보도</option>
+              <option value="scraped">타 언론사/기관 소식</option>
+              <option value="ad">배너 광고</option>
+            </select>
+            <input className="p-4 border rounded-xl bg-gray-50 text-gray-800" placeholder="원본 링크" value={originalLink} onChange={(e) => setOriginalLink(e.target.value)} disabled={sourceType === 'manual'} />
+          </div>
+
+          <button type="submit" className="w-full bg-blue-700 text-white font-bold py-5 rounded-2xl shadow-lg hover:bg-blue-800 transition text-lg mt-4">
+            📰 기사 최종 발행하기
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
