@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   try {
     const { keywords } = await req.json();
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     // ⭐️ AI에게 내리는 '전문 기자' 빙의 프롬프트
     const prompt = `
