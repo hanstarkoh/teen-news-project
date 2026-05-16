@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "내용을 찾을 수 없습니다." }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     const prompt = `
       너는 부산 청소년 뉴스의 수석 기자야. 
       다음은 청소년 관련 기관 홈페이지에서 방금 긁어온 [공지사항/행사] 텍스트야.
