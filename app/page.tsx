@@ -15,7 +15,7 @@ export default function Home() {
   
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
-  const PAGE_GROUP_SIZE = 10; // ⭐️ 한 번에 보여줄 페이지 번호 개수 (10개)
+  const PAGE_GROUP_SIZE = 10;
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<any>(null); 
@@ -97,7 +97,6 @@ export default function Home() {
     return matchSearch && matchFilter && matchStartDate && matchEndDate;
   });
 
-  // ⭐️ 페이징 계산 로직 추가
   const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
   const paginatedArticles = filteredArticles.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
@@ -134,6 +133,7 @@ export default function Home() {
             
             {isAdmin ? (
               <>
+                <a href="/admin/desk" className="bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-purple-700 transition">🕵️‍♂️ AI 데스크</a>
                 <button onClick={handleScrape} disabled={isScraping} className={`px-3 py-2 rounded-lg text-sm font-bold shadow transition ${isScraping ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600 text-white'}`}>
                   {isScraping ? '⏳ 수집 중...' : '🤖 타 언론사 수집'}
                 </button>
@@ -143,19 +143,19 @@ export default function Home() {
                 <button onClick={handleAdminLogout} className="bg-white text-gray-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">로그아웃</button>
               </>
             ) : (
-              <a href="/write" className="text-blue-300 hover:text-white transition-colors text-lg" title="관리자 페이지">🔒</a>
+              <a href="/login" className="text-blue-300 hover:text-white transition-colors text-lg" title="관리자 페이지">🔒</a>
             )}
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto mt-8 p-4 flex flex-col md:flex-row gap-6">
+        {/* ... (기존 검색, 필터, 리스트 렌더링 코드 동일) ... */}
         <aside className="w-full md:w-1/4 space-y-6">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <h3 className="font-bold text-gray-800 mb-3 text-lg">🔍 기사 검색</h3>
             <input type="text" placeholder="검색어를 입력하세요..." className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <h3 className="font-bold text-gray-800 mb-3 text-lg">📅 기간 검색</h3>
             <div className="flex flex-col space-y-2">
@@ -165,7 +165,6 @@ export default function Home() {
               <button onClick={() => {setStartDate(''); setEndDate('');}} className="mt-2 text-xs text-gray-500 hover:text-blue-600 underline text-right">초기화</button>
             </div>
           </div>
-
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <h3 className="font-bold text-gray-800 mb-3 text-lg">📂 카테고리</h3>
             <div className="flex flex-col space-y-2">
@@ -207,41 +206,13 @@ export default function Home() {
                 )}
               </div>
 
-              {/* ⭐️ 화살표가 적용된 새로운 페이징 UI */}
               {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 mt-10">
-                  {/* 이전 10개로 넘어가기 버튼 */}
-                  {startPage > 1 && (
-                    <button 
-                      onClick={() => { setCurrentPage(startPage - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                      className="w-10 h-10 rounded-xl font-bold transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center justify-center"
-                      title="이전 페이지"
-                    >
-                      ◀
-                    </button>
-                  )}
-
-                  {/* 1~10 단위 페이지 번호 */}
+                  {startPage > 1 && <button onClick={() => setCurrentPage(startPage - 1)} className="w-10 h-10 rounded-xl font-bold transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center justify-center">◀</button>}
                   {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map(page => (
-                    <button 
-                      key={page} 
-                      onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                      className={`w-10 h-10 rounded-xl font-bold transition-all shadow-sm ${currentPage === page ? 'bg-blue-700 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}
-                    >
-                      {page}
-                    </button>
+                    <button key={page} onClick={() => setCurrentPage(page)} className={`w-10 h-10 rounded-xl font-bold transition-all shadow-sm ${currentPage === page ? 'bg-blue-700 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}>{page}</button>
                   ))}
-
-                  {/* 다음 10개로 넘어가기 버튼 */}
-                  {endPage < totalPages && (
-                    <button 
-                      onClick={() => { setCurrentPage(endPage + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                      className="w-10 h-10 rounded-xl font-bold transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center justify-center"
-                      title="다음 페이지"
-                    >
-                      ▶
-                    </button>
-                  )}
+                  {endPage < totalPages && <button onClick={() => setCurrentPage(endPage + 1)} className="w-10 h-10 rounded-xl font-bold transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center justify-center">▶</button>}
                 </div>
               )}
             </>
