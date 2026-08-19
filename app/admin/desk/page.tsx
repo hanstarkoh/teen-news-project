@@ -74,7 +74,7 @@ export default function AIDeskPage() {
       title: draft.title,
       summary: draft.content,
       thumbnail_url: draft.imageUrl || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop',
-      source_type: 'scraped',
+      source_type: 'manual',
       original_link: draft.url,
       published_at: new Date().toISOString(),
     }]);

@@ -23,6 +23,10 @@ export default function ArticlePage() {
   const [aiSummary, setAiSummary] = useState('');
   const [isSummarizing, setIsSummarizing] = useState(false);
 
+  // ⭐️ 좋아요 상태 추가
+  const [liked, setLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') setIsAdmin(true);
 
@@ -34,6 +38,11 @@ export default function ArticlePage() {
         setEditTitle(artData.title);
         setEditSummary(artData.summary);
         setEditImageUrl(artData.thumbnail_url || '');
+      }
+
+      if (typeof window !== 'undefined') {
+        const likedArticles: number[] = JSON.parse(localStorage.getItem('likedArticles') || '[]');
+        setLiked(likedArticles.includes(Number(id)));
       }
 
       const { data: adData } = await supabase.from('articles').select('*').eq('source_type', 'ad').order('published_at', { ascending: false });
@@ -56,6 +65,29 @@ export default function ArticlePage() {
       await supabase.from('articles').delete().eq('id', id);
       router.push('/');
     }
+  };
+
+  // ⭐️ 좋아요 토글 함수 (누구나 클릭 가능, 브라우저당 1회)
+  const handleLike = async () => {
+    if (likeLoading || !article) return;
+    setLikeLoading(true);
+
+    const likedArticles: number[] = JSON.parse(localStorage.getItem('likedArticles') || '[]');
+    const nextLiked = !liked;
+    const nextCount = (article.likes || 0) + (nextLiked ? 1 : -1);
+
+    const { error } = await supabase.from('articles').update({ likes: nextCount }).eq('id', id);
+    if (!error) {
+      setArticle({ ...article, likes: nextCount });
+      setLiked(nextLiked);
+      const updatedLikedArticles = nextLiked
+        ? [...likedArticles, Number(id)]
+        : likedArticles.filter(likedId => likedId !== Number(id));
+      localStorage.setItem('likedArticles', JSON.stringify(updatedLikedArticles));
+    } else {
+      alert('좋아요 처리에 실패했습니다.');
+    }
+    setLikeLoading(false);
   };
 
   const handleUpdate = async () => {
@@ -135,7 +167,17 @@ export default function ArticlePage() {
                   {article.source_type === 'manual' ? '단독 보도' : '타 언론사 기사'}
                 </div>
                 <h1 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight mb-6">{article.title}</h1>
-                <div className="text-gray-400 font-medium text-sm">입력: {new Date(article.published_at).toLocaleString('ko-KR')}</div>
+                <div className="flex items-center justify-between">
+                  <div className="text-gray-400 font-medium text-sm">입력: {new Date(article.published_at).toLocaleString('ko-KR')}</div>
+                  <button
+                    onClick={handleLike}
+                    disabled={likeLoading}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm shadow-sm border transition-colors ${liked ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-500 border-gray-200 hover:border-red-300 hover:text-red-500'}`}
+                  >
+                    <span>{liked ? '❤️' : '🤍'}</span>
+                    <span>좋아요 {article.likes || 0}</span>
+                  </button>
+                </div>
               </header>
 
               {/* ⭐️ AI 3줄 요약 섹션 */}
@@ -168,6 +210,18 @@ export default function ArticlePage() {
               <article className="text-gray-800 text-lg md:text-xl leading-loose whitespace-pre-wrap break-words font-medium">
                 {article.summary}
               </article>
+
+              {article.original_link && (
+                <a
+                  href={article.original_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-10 flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-2xl px-6 py-4 transition-colors group"
+                >
+                  <span className="font-bold text-gray-600 group-hover:text-blue-700">📷 원본 사진/게시물 더 보러가기</span>
+                  <span className="text-gray-400 group-hover:text-blue-700">↗</span>
+                </a>
+              )}
             </>
           )}
         </div>

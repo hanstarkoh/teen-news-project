@@ -69,6 +69,15 @@ export default function Home() {
     }
   };
 
+  const handleDeleteArticle = async (id: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (window.confirm('정말로 이 기사를 삭제하시겠습니까?')) {
+      await supabase.from('articles').delete().eq('id', id);
+      fetchData();
+    }
+  };
+
   const handleScrape = async () => {
     setIsScraping(true);
     alert('🤖 로봇 기자가 타 언론사 뉴스를 수집합니다!');
@@ -189,19 +198,32 @@ export default function Home() {
                   <div className="text-center bg-white p-10 rounded-2xl border border-gray-200 text-gray-500 font-bold">조건에 맞는 기사가 없습니다.</div>
                 ) : (
                   paginatedArticles.map((article) => (
-                    <a key={article.id} href={article.source_type === 'manual' ? `/article/${article.id}` : (article.original_link || '#')} target={article.source_type === 'manual' ? '_self' : '_blank'} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row overflow-hidden border border-gray-100 group">
-                      <div className="w-full sm:w-1/3 h-48 sm:h-auto relative overflow-hidden">
-                        <img src={article.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="기사 썸네일"/>
-                        <div className={`absolute top-2 left-2 text-white text-xs font-bold px-2 py-1 rounded ${article.source_type === 'manual' ? 'bg-red-500' : 'bg-gray-800'}`}>{article.source_type === 'manual' ? '단독' : '타 언론사'}</div>
-                      </div>
-                      <div className="p-5 flex-1 flex flex-col justify-between">
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-700 transition-colors">{article.title}</h3>
-                          <p className="text-gray-600 text-sm line-clamp-2">{article.summary}</p>
+                    <div key={article.id} className="relative group">
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => handleDeleteArticle(article.id, e)}
+                          className="absolute top-3 right-3 z-10 bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-md"
+                        >
+                          삭제
+                        </button>
+                      )}
+                      <a href={article.source_type === 'manual' ? `/article/${article.id}` : (article.original_link || '#')} target={article.source_type === 'manual' ? '_self' : '_blank'} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row overflow-hidden border border-gray-100">
+                        <div className="w-full sm:w-1/3 h-48 sm:h-auto relative overflow-hidden">
+                          <img src={article.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="기사 썸네일"/>
+                          <div className={`absolute top-2 left-2 text-white text-xs font-bold px-2 py-1 rounded ${article.source_type === 'manual' ? 'bg-red-500' : 'bg-gray-800'}`}>{article.source_type === 'manual' ? '단독' : '타 언론사'}</div>
                         </div>
-                        <div className="text-xs text-gray-400 mt-4 font-medium">{new Date(article.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
-                      </div>
-                    </a>
+                        <div className="p-5 flex-1 flex flex-col justify-between">
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-700 transition-colors">{article.title}</h3>
+                            <p className="text-gray-600 text-sm line-clamp-2">{article.summary}</p>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-4 font-medium flex items-center gap-3">
+                            <span>{new Date(article.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            {article.source_type === 'manual' && <span>❤️ {article.likes || 0}</span>}
+                          </div>
+                        </div>
+                      </a>
+                    </div>
                   ))
                 )}
               </div>
