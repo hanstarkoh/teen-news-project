@@ -8,7 +8,7 @@ export default function AIDeskPage() {
   const [loadingList, setLoadingList] = useState(false);
   
   const [processingId, setProcessingId] = useState<number | null>(null);
-  const [drafts, setDrafts] = useState<{[key: number]: {title: string, content: string, url: string}}>({});
+  const [drafts, setDrafts] = useState<{[key: number]: {title: string, content: string, url: string, imageUrl?: string}}>({});
   
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
@@ -25,18 +25,18 @@ export default function AIDeskPage() {
   const fetchGeumjeongNotices = async () => {
     setLoadingList(true);
     try {
-      const targetUrl = 'https://www.youthcool.or.kr/SW_bbs/notice/list.php?zipEncode==atpLrxydrMCH9MyMu2yPr3BU91vt1drjrMCH9MyMetpSfMvWLME';
-      const response = await fetch('/api/scrape-list', {
+      const targetUrl = 'https://www.youthcool.or.kr/SW_bbs/gallery/list.php?zipEncode=5jxzSXwyN91vt1drjrMCH9MyMetpSfMvWLME';
+      const response = await fetch('/api/scrape-gallery-list', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUrl })
       });
       const data = await response.json();
-      
+
       if (data.notices && data.notices.length > 0) {
         setNotices(data.notices);
-        alert(`성공! ${data.notices.length}개의 최신 공지사항을 대기실로 가져왔습니다.`);
+        alert(`성공! ${data.notices.length}개의 최신 갤러리 게시물을 대기실로 가져왔습니다.`);
       } else {
-        alert('가져올 공지사항이 없습니다.');
+        alert('가져올 갤러리 게시물이 없습니다.');
       }
     } catch (error) {
       alert('목록을 가져오지 못했습니다.');
@@ -47,14 +47,14 @@ export default function AIDeskPage() {
   const generateDraft = async (index: number, url: string) => {
     setProcessingId(index);
     try {
-      const response = await fetch('/api/scrape-url', {
+      const response = await fetch('/api/scrape-gallery', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUrl: url })
       });
       const data = await response.json();
-      
+
       if (data.title && data.content) {
-        setDrafts(prev => ({ ...prev, [index]: { title: data.title, content: data.content, url } }));
+        setDrafts(prev => ({ ...prev, [index]: { title: data.title, content: data.content, url, imageUrl: data.sourceImage } }));
       } else {
         alert('기사 초안 작성 실패: ' + (data.error || ''));
       }
@@ -73,7 +73,7 @@ export default function AIDeskPage() {
     const { error } = await supabase.from('articles').insert([{
       title: draft.title,
       summary: draft.content,
-      thumbnail_url: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop',
+      thumbnail_url: draft.imageUrl || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop',
       source_type: 'scraped',
       original_link: draft.url,
       published_at: new Date().toISOString(),
@@ -105,7 +105,7 @@ export default function AIDeskPage() {
         <div className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
           <div>
             <h1 className="text-3xl font-black text-gray-900 mb-2">🕵️‍♂️ AI 편집 데스크</h1>
-            <p className="text-gray-500 font-bold">타 기관 공지사항을 검토하고 뉴스로 발행하는 컨트롤 타워입니다.</p>
+            <p className="text-gray-500 font-bold">타 기관 활동 갤러리를 검토하고 뉴스로 발행하는 컨트롤 타워입니다.</p>
           </div>
           <button onClick={() => router.push('/')} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-bold hover:bg-gray-200">홈으로</button>
         </div>
@@ -118,7 +118,7 @@ export default function AIDeskPage() {
               disabled={loadingList}
               className="bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-blue-700 transition flex items-center gap-2"
             >
-              {loadingList ? '📡 금정청소년수련관 스캔 중...' : '📥 금정청소년수련관 공지사항 10개 불러오기'}
+              {loadingList ? '📡 금정청소년수련관 스캔 중...' : '📥 금정청소년수련관 활동 갤러리 10개 불러오기'}
             </button>
           </div>
         </div>
@@ -126,6 +126,7 @@ export default function AIDeskPage() {
         {notices.length > 0 && (
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
             <h2 className="font-bold text-lg mb-4 text-gray-800">📋 기사화 대기실 (총 {notices.length}건)</h2>
+            <p className="text-xs text-gray-400 -mt-2 mb-3">※ 사진 속 인물의 얼굴/인상착의는 AI가 초상권 보호를 위해 서술하지 않습니다.</p>
             <div className="space-y-4">
               {notices.map((notice, index) => (
                 <div key={index} className="border border-gray-200 rounded-2xl p-5 hover:border-blue-300 transition-all bg-gray-50">
@@ -153,9 +154,17 @@ export default function AIDeskPage() {
                         <span className="text-sm text-gray-500 font-bold">내용을 직접 수정한 뒤 발행할 수 있습니다.</span>
                       </div>
                       
-                      <input 
-                        className="w-full p-3 border border-gray-200 rounded-xl font-bold text-gray-900 mb-3 focus:border-indigo-500 outline-none" 
-                        value={drafts[index].title} 
+                      {drafts[index].imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={drafts[index].imageUrl}
+                          alt="대표 이미지 미리보기"
+                          className="w-full max-h-64 object-cover rounded-xl mb-3 border border-gray-200"
+                        />
+                      )}
+                      <input
+                        className="w-full p-3 border border-gray-200 rounded-xl font-bold text-gray-900 mb-3 focus:border-indigo-500 outline-none"
+                        value={drafts[index].title}
                         onChange={(e) => updateDraft(index, 'title', e.target.value)}
                       />
                       <textarea 

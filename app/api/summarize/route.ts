@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const { content } = await req.json();
 
     // 가장 빠르고 똑똑한 최신 무료 모델 선택
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 
     // AI에게 내릴 강력한 명령 (프롬프트)
     const prompt = `
