@@ -2,16 +2,20 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { gallerySources } from '@/lib/gallerySources';
 
 export default function AIDeskPage() {
+  const [sourceId, setSourceId] = useState(gallerySources[0].id);
   const [notices, setNotices] = useState<{title: string, url: string}[]>([]);
   const [loadingList, setLoadingList] = useState(false);
-  
+
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<{[key: number]: {title: string, content: string, url: string, imageUrl?: string}}>({});
-  
+
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
+
+  const currentSource = gallerySources.find(s => s.id === sourceId) || gallerySources[0];
 
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') {
@@ -22,13 +26,18 @@ export default function AIDeskPage() {
     }
   }, [router]);
 
-  const fetchGeumjeongNotices = async () => {
+  const handleSourceChange = (id: string) => {
+    setSourceId(id);
+    setNotices([]);
+    setDrafts({});
+  };
+
+  const fetchNotices = async () => {
     setLoadingList(true);
     try {
-      const targetUrl = 'https://www.youthcool.or.kr/SW_bbs/gallery/list.php?zipEncode=5jxzSXwyN91vt1drjrMCH9MyMetpSfMvWLME';
-      const response = await fetch('/api/scrape-gallery-list', {
+      const response = await fetch('/api/gallery-list', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUrl })
+        body: JSON.stringify({ sourceId })
       });
       const data = await response.json();
 
@@ -44,12 +53,12 @@ export default function AIDeskPage() {
     setLoadingList(false);
   };
 
-  const generateDraft = async (index: number, url: string) => {
+  const generateDraft = async (index: number, url: string, listTitle: string) => {
     setProcessingId(index);
     try {
-      const response = await fetch('/api/scrape-gallery', {
+      const response = await fetch('/api/gallery-article', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUrl: url })
+        body: JSON.stringify({ sourceId, targetUrl: url, listTitle })
       });
       const data = await response.json();
 
@@ -112,13 +121,23 @@ export default function AIDeskPage() {
 
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
           <h2 className="font-bold text-lg mb-4 text-blue-900">📡 정보 수집 레이더</h2>
-          <div className="flex gap-4">
-            <button 
-              onClick={fetchGeumjeongNotices} 
+          <div className="flex flex-col sm:flex-row gap-4">
+            <select
+              value={sourceId}
+              onChange={(e) => handleSourceChange(e.target.value)}
+              disabled={loadingList}
+              className="p-3 border border-gray-300 rounded-xl font-bold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {gallerySources.map(source => (
+                <option key={source.id} value={source.id}>{source.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={fetchNotices}
               disabled={loadingList}
               className="bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-blue-700 transition flex items-center gap-2"
             >
-              {loadingList ? '📡 금정청소년수련관 스캔 중...' : '📥 금정청소년수련관 활동 갤러리 10개 불러오기'}
+              {loadingList ? `📡 ${currentSource.name} 스캔 중...` : `📥 ${currentSource.name} 활동 갤러리 10개 불러오기`}
             </button>
           </div>
         </div>
@@ -138,7 +157,7 @@ export default function AIDeskPage() {
                     
                     {!drafts[index] && (
                       <button 
-                        onClick={() => generateDraft(index, notice.url)}
+                        onClick={() => generateDraft(index, notice.url, notice.title)}
                         disabled={processingId !== null}
                         className={`px-4 py-2 rounded-xl font-bold text-sm shadow text-white flex-shrink-0 ${processingId === index ? 'bg-indigo-300' : processingId !== null ? 'bg-gray-300' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                       >

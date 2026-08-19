@@ -19,10 +19,6 @@ export default function ArticlePage() {
   const [editSummary, setEditSummary] = useState('');
   const [editImageUrl, setEditImageUrl] = useState('');
 
-  // ⭐️ AI 요약 상태 추가
-  const [aiSummary, setAiSummary] = useState('');
-  const [isSummarizing, setIsSummarizing] = useState(false);
-
   // ⭐️ 좋아요 상태 추가
   const [liked, setLiked] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
@@ -99,27 +95,6 @@ export default function ArticlePage() {
     }
   };
 
-  // ⭐️ AI 요약 요청 함수
-  const handleSummarize = async () => {
-    setIsSummarizing(true);
-    try {
-      const response = await fetch('/api/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: article.summary })
-      });
-      const data = await response.json();
-      if (data.summary) {
-        setAiSummary(data.summary);
-      } else {
-        alert('요약에 실패했습니다. (AI 로봇이 잠시 쉬고 있나 봐요!)');
-      }
-    } catch (err) {
-      alert('오류가 발생했습니다.');
-    }
-    setIsSummarizing(false);
-  };
-
   if (loading) return <div className="p-20 text-center text-xl font-bold text-gray-500">기사를 불러오는 중입니다... 🌊</div>;
   if (!article) return <div className="p-20 text-center text-red-500 text-xl font-bold">기사를 찾을 수 없습니다.</div>;
 
@@ -179,29 +154,6 @@ export default function ArticlePage() {
                   </button>
                 </div>
               </header>
-
-              {/* ⭐️ AI 3줄 요약 섹션 */}
-              <div className="mb-10">
-                {!aiSummary ? (
-                  <button 
-                    onClick={handleSummarize} 
-                    disabled={isSummarizing}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-5 rounded-2xl shadow-md hover:shadow-lg transition-all text-lg flex items-center justify-center gap-2"
-                  >
-                    {isSummarizing ? '🤖 구글 AI가 기사를 읽고 요약하는 중...' : '✨ 바쁜 청소년을 위한 AI 3줄 요약 보기'}
-                  </button>
-                ) : (
-                  <div className="bg-indigo-50 border border-indigo-100 p-8 rounded-3xl shadow-inner relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 text-indigo-200 opacity-20 text-6xl">🤖</div>
-                    <h3 className="text-indigo-800 font-black text-xl mb-4 flex items-center gap-2 relative z-10">
-                      ✨ AI 3줄 핵심 요약
-                    </h3>
-                    <div className="text-indigo-900 font-bold text-lg leading-loose whitespace-pre-wrap relative z-10">
-                      {aiSummary}
-                    </div>
-                  </div>
-                )}
-              </div>
 
               <div className="mb-10 rounded-3xl overflow-hidden shadow-md">
                 <img src={article.thumbnail_url || defaultImage} alt="본문 이미지" className="w-full h-auto object-cover max-h-[500px]"/>
