@@ -101,19 +101,16 @@ export default function ArticlePage() {
   const defaultImage = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop";
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <nav className="bg-blue-700 text-white p-4 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex flex-col">
-            <a href="/" className="text-2xl font-black tracking-tighter">🌊 BY NEWS</a>
-            <span className="text-[10px] md:text-xs font-bold text-blue-200">부산 청소년의 새로운 소식</span>
-          </div>
-          <button onClick={() => router.push('/')} className="bg-white text-blue-700 px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-gray-100">홈으로</button>
+    <div className="min-h-screen bg-white pb-20">
+      <header className="border-b border-gray-900 bg-white sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <a href="/" className="font-serif text-2xl md:text-3xl font-black tracking-tight text-gray-900">BY NEWS</a>
+          <button onClick={() => router.push('/')} className="text-sm font-bold text-gray-500 hover:text-gray-900 transition">홈으로</button>
         </div>
-      </nav>
+      </header>
 
-      <main className="max-w-7xl mx-auto mt-10 p-6 flex flex-col md:flex-row gap-10">
-        <div className="flex-1 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+      <main className="max-w-7xl mx-auto mt-10 px-6 flex flex-col md:flex-row gap-10">
+        <div className="flex-1 max-w-3xl">
           {isAdmin && article.source_type === 'manual' && (
             <div className="mb-8 flex justify-end gap-3 bg-blue-50 p-4 rounded-2xl border border-blue-100">
               <span className="mr-auto font-bold text-blue-700 my-auto">🛠️ 기사 관리 모드</span>
@@ -137,29 +134,33 @@ export default function ArticlePage() {
             </div>
           ) : (
             <>
-              <header className="mb-8 border-b border-gray-100 pb-8">
-                <div className={`inline-block font-bold px-4 py-1 rounded-full text-xs mb-4 ${article.source_type === 'manual' ? 'bg-red-100 text-red-600' : 'bg-gray-200 text-gray-700'}`}>
+              <header className="mb-6">
+                <span className={`inline-block font-bold text-xs px-2 py-1 mb-4 ${article.source_type === 'manual' ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'}`}>
                   {article.source_type === 'manual' ? '단독 보도' : '타 언론사 기사'}
-                </div>
-                <h1 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight mb-6">{article.title}</h1>
-                <div className="flex items-center justify-between">
-                  <div className="text-gray-400 font-medium text-sm">입력: {new Date(article.published_at).toLocaleString('ko-KR')}</div>
+                </span>
+                <h1 className="font-serif text-3xl md:text-4xl font-black text-gray-900 leading-tight mb-5">{article.title}</h1>
+                <div className="flex items-center justify-between border-y border-gray-200 py-3">
+                  <div className="text-gray-500 text-sm">
+                    <span className="font-bold text-gray-700">부산청소년뉴스</span>
+                    <span className="mx-2 text-gray-300">|</span>
+                    <span>입력 {new Date(article.published_at).toLocaleString('ko-KR')}</span>
+                  </div>
                   <button
                     onClick={handleLike}
                     disabled={likeLoading}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm shadow-sm border transition-colors ${liked ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-500 border-gray-200 hover:border-red-300 hover:text-red-500'}`}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full font-bold text-sm border transition-colors ${liked ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-500 border-gray-300 hover:border-red-300 hover:text-red-500'}`}
                   >
                     <span>{liked ? '❤️' : '🤍'}</span>
-                    <span>좋아요 {article.likes || 0}</span>
+                    <span>{article.likes || 0}</span>
                   </button>
                 </div>
               </header>
 
-              <div className="mb-10 rounded-3xl overflow-hidden shadow-md">
-                <img src={article.thumbnail_url || defaultImage} alt="본문 이미지" className="w-full h-auto object-cover max-h-[500px]"/>
+              <div className="mb-8">
+                <img src={article.thumbnail_url || defaultImage} alt="본문 이미지" className="w-full h-auto object-cover"/>
               </div>
-              
-              <article className="text-gray-800 text-lg md:text-xl leading-loose whitespace-pre-wrap break-words font-medium">
+
+              <article className="text-gray-800 text-lg leading-loose whitespace-pre-wrap break-words">
                 {article.summary}
               </article>
 
@@ -168,10 +169,10 @@ export default function ArticlePage() {
                   href={article.original_link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-10 flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-2xl px-6 py-4 transition-colors group"
+                  className="mt-10 flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-gray-200 px-6 py-4 transition-colors group"
                 >
-                  <span className="font-bold text-gray-600 group-hover:text-blue-700">📷 원본 사진/게시물 더 보러가기</span>
-                  <span className="text-gray-400 group-hover:text-blue-700">↗</span>
+                  <span className="font-bold text-gray-600 group-hover:text-gray-900">📷 원본 사진/게시물 더 보러가기</span>
+                  <span className="text-gray-400 group-hover:text-gray-900">↗</span>
                 </a>
               )}
             </>
@@ -180,11 +181,11 @@ export default function ArticlePage() {
 
         <aside className="w-full md:w-80 space-y-8">
           <div className="sticky top-24 space-y-6">
-            <h3 className="font-bold text-gray-400 text-sm flex items-center gap-2"><span className="w-full h-px bg-gray-300"></span> AD <span className="w-full h-px bg-gray-300"></span></h3>
+            <h3 className="font-serif font-bold text-gray-900 text-sm border-b-2 border-gray-900 pb-2">광고</h3>
             <div className="flex flex-col gap-6">
               {ads.map((ad) => (
                 <div key={ad.id} className="group relative">
-                  <a href={ad.original_link} target="_blank" rel="noopener noreferrer" className="block relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-200 bg-white aspect-[3/4]">
+                  <a href={ad.original_link} target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden border border-gray-200 bg-white aspect-[3/4]">
                     <img src={ad.thumbnail_url} alt="광고" className="w-full h-full object-cover"/>
                     <div className="absolute top-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 m-1 rounded">AD</div>
                   </a>

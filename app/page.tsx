@@ -115,126 +115,149 @@ export default function Home() {
 
   const defaultImage = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop";
 
-  return (
-    <div className="min-h-screen bg-gray-100 pb-20">
-      <nav className="bg-blue-700 text-white p-4 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex flex-col items-center md:items-start">
-            <a href="/" className="text-2xl font-black tracking-tighter">🌊 BY NEWS</a>
-            <span className="text-[10px] md:text-xs font-bold text-blue-200">부산 청소년의 새로운 소식</span>
-          </div>
-          
-          <div className="flex items-center gap-3 md:gap-4 flex-wrap justify-center">
-            <a href="/hotplace" className="bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-600 transition">🗺️ 핫플 지도</a>
-            <a href="/bamboo" className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-green-600 transition">🎋 대나무숲</a>
-            
-            {(user || isAdmin) && (
-              <a href="/request" className="bg-yellow-400 text-blue-900 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-yellow-300 transition">📢 기사 제보하기</a>
-            )}
+  const showHero = currentPage === 1 && !searchTerm && !startDate && !endDate && paginatedArticles.length > 0;
+  const heroArticle = paginatedArticles[0];
+  const gridArticles = showHero ? paginatedArticles.slice(1) : paginatedArticles;
 
+  const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+
+  return (
+    <div className="min-h-screen bg-white pb-20">
+      {/* 유틸리티 바 */}
+      <div className="bg-gray-900 text-gray-300 text-xs">
+        <div className="max-w-7xl mx-auto px-4 py-1.5 flex justify-between items-center gap-4">
+          <span className="hidden sm:inline whitespace-nowrap">{today}</span>
+          <div className="flex items-center gap-4 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden">
+            <a href="/hotplace" className="hover:text-white transition">핫플 지도</a>
+            <a href="/bamboo" className="hover:text-white transition">대나무숲</a>
+            {(user || isAdmin) && <a href="/request" className="hover:text-white transition">기사 제보</a>}
             {!isAdmin && (
               user ? (
-                <button onClick={handleUserLogout} className="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-gray-300 transition">기자 로그아웃</button>
+                <button onClick={handleUserLogout} className="hover:text-white transition">기자 로그아웃</button>
               ) : (
-                <a href="/login" className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-600 transition">🔑 기자단 로그인</a>
+                <a href="/login" className="hover:text-white transition">기자단 로그인</a>
               )
             )}
-            
             {isAdmin ? (
               <>
-                <a href="/admin/desk" className="bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-purple-700 transition">🕵️‍♂️ AI 데스크</a>
-                <button onClick={handleScrape} disabled={isScraping} className={`px-3 py-2 rounded-lg text-sm font-bold shadow transition ${isScraping ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600 text-white'}`}>
-                  {isScraping ? '⏳ 수집 중...' : '🤖 타 언론사 수집'}
+                <a href="/admin/desk" className="hover:text-white transition">AI 데스크</a>
+                <button onClick={handleScrape} disabled={isScraping} className="hover:text-white transition disabled:text-gray-500">
+                  {isScraping ? '수집 중...' : '타 언론사 수집'}
                 </button>
-                <a href="/admin/requests" className="bg-orange-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-orange-600 transition">📬 제보 확인</a>
-                <a href="/write" className="bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-600 transition">✍️ 기사 쓰기</a>
-                <a href="/ad" className="bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-600 transition">💸 광고 추가</a>
-                <button onClick={handleAdminLogout} className="bg-white text-gray-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition">로그아웃</button>
+                <a href="/admin/requests" className="hover:text-white transition">제보 확인</a>
+                <a href="/write" className="hover:text-white transition">기사 쓰기</a>
+                <a href="/ad" className="hover:text-white transition">광고 추가</a>
+                <button onClick={handleAdminLogout} className="hover:text-white transition">로그아웃</button>
               </>
             ) : (
-              <a href="/login" className="text-blue-300 hover:text-white transition-colors text-lg" title="관리자 페이지">🔒</a>
+              <a href="/login" className="hover:text-white transition" title="관리자 페이지">편집장</a>
             )}
           </div>
         </div>
-      </nav>
+      </div>
+
+      {/* 마스트헤드 */}
+      <header className="border-b border-gray-900 bg-white sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-5 flex flex-col items-center">
+          <a href="/" className="font-serif text-4xl md:text-5xl font-black tracking-tight text-gray-900">BY NEWS</a>
+          <span className="text-xs md:text-sm font-bold text-gray-400 tracking-[0.2em] mt-1">부산 청소년의 새로운 소식</span>
+        </div>
+        <nav className="border-t border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-8 text-sm font-bold">
+            <button onClick={() => setFilter('all')} className={`py-3 border-b-2 transition ${filter === 'all' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>전체 기사</button>
+            <button onClick={() => setFilter('manual')} className={`py-3 border-b-2 transition ${filter === 'manual' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>단독 보도</button>
+            <button onClick={() => setFilter('scraped')} className={`py-3 border-b-2 transition ${filter === 'scraped' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>타 언론사</button>
+          </div>
+        </nav>
+      </header>
 
       <main className="max-w-7xl mx-auto mt-8 p-4 flex flex-col md:flex-row gap-6">
         {/* ... (기존 검색, 필터, 리스트 렌더링 코드 동일) ... */}
-        <aside className="w-full md:w-1/4 space-y-6">
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <h3 className="font-bold text-gray-800 mb-3 text-lg">🔍 기사 검색</h3>
-            <input type="text" placeholder="검색어를 입력하세요..." className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <aside className="w-full md:w-1/4 space-y-8">
+          <div>
+            <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-gray-900 pb-2">기사 검색</h3>
+            <input type="text" placeholder="검색어를 입력하세요..." className="w-full p-3 border border-gray-300 focus:ring-1 focus:ring-gray-900 focus:border-gray-900 outline-none text-gray-900 text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <h3 className="font-bold text-gray-800 mb-3 text-lg">📅 기간 검색</h3>
+          <div>
+            <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-gray-900 pb-2">기간 검색</h3>
             <div className="flex flex-col space-y-2">
-              <input type="date" className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <input type="date" className="w-full p-2 border border-gray-300 text-sm outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 text-gray-900" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               <span className="text-center text-gray-400 text-sm font-bold">~</span>
-              <input type="date" className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              <button onClick={() => {setStartDate(''); setEndDate('');}} className="mt-2 text-xs text-gray-500 hover:text-blue-600 underline text-right">초기화</button>
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <h3 className="font-bold text-gray-800 mb-3 text-lg">📂 카테고리</h3>
-            <div className="flex flex-col space-y-2">
-              <button onClick={() => setFilter('all')} className={`p-3 rounded-xl text-left font-bold transition ${filter === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>🌐 전체 기사 보기</button>
-              <button onClick={() => setFilter('manual')} className={`p-3 rounded-xl text-left font-bold transition ${filter === 'manual' ? 'bg-red-500 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>🔥 BY NEWS 단독보도</button>
-              <button onClick={() => setFilter('scraped')} className={`p-3 rounded-xl text-left font-bold transition ${filter === 'scraped' ? 'bg-green-500 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>📰 타 언론사 기사</button>
+              <input type="date" className="w-full p-2 border border-gray-300 text-sm outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 text-gray-900" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <button onClick={() => {setStartDate(''); setEndDate('');}} className="mt-2 text-xs text-gray-500 hover:text-gray-900 underline text-right">초기화</button>
             </div>
           </div>
         </aside>
 
         <section className="w-full md:w-2/4 flex flex-col">
-          <div className="flex justify-between items-end mb-6 border-b-4 border-blue-700 pb-2">
-            <h2 className="text-2xl font-extrabold text-gray-900">{filter === 'all' ? '최신 뉴스' : filter === 'manual' ? '단독 보도 뉴스' : '타 언론사 주요뉴스'}</h2>
-            <span className="text-gray-500 font-bold text-sm">총 {filteredArticles.length}개</span>
+          <div className="flex justify-between items-end mb-6 border-b-4 border-gray-900 pb-2">
+            <h2 className="font-serif text-2xl font-black text-gray-900">{filter === 'all' ? '최신 뉴스' : filter === 'manual' ? '단독 보도' : '타 언론사 뉴스'}</h2>
+            <span className="text-gray-400 font-bold text-xs">총 {filteredArticles.length}건</span>
           </div>
           {loading ? (
             <div className="text-center py-20 font-bold text-gray-500">뉴스를 불러오는 중입니다... 🌊</div>
           ) : (
             <>
-              <div className="space-y-6 flex-1">
-                {paginatedArticles.length === 0 ? (
-                  <div className="text-center bg-white p-10 rounded-2xl border border-gray-200 text-gray-500 font-bold">조건에 맞는 기사가 없습니다.</div>
-                ) : (
-                  paginatedArticles.map((article) => (
-                    <div key={article.id} className="relative group">
+              {paginatedArticles.length === 0 ? (
+                <div className="text-center bg-gray-50 p-10 border border-gray-200 text-gray-500 font-bold">조건에 맞는 기사가 없습니다.</div>
+              ) : (
+                <div className="flex-1">
+                  {showHero && (
+                    <div className="relative group mb-8 pb-8 border-b border-gray-200">
                       {isAdmin && (
-                        <button
-                          onClick={(e) => handleDeleteArticle(article.id, e)}
-                          className="absolute top-3 right-3 z-10 bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-md"
-                        >
-                          삭제
-                        </button>
+                        <button onClick={(e) => handleDeleteArticle(heroArticle.id, e)} className="absolute top-3 right-3 z-10 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow-md">삭제</button>
                       )}
-                      <a href={article.source_type === 'manual' ? `/article/${article.id}` : (article.original_link || '#')} target={article.source_type === 'manual' ? '_self' : '_blank'} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row overflow-hidden border border-gray-100">
-                        <div className="w-full sm:w-1/3 h-48 sm:h-auto relative overflow-hidden">
-                          <img src={article.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="기사 썸네일"/>
-                          <div className={`absolute top-2 left-2 text-white text-xs font-bold px-2 py-1 rounded ${article.source_type === 'manual' ? 'bg-red-500' : 'bg-gray-800'}`}>{article.source_type === 'manual' ? '단독' : '타 언론사'}</div>
+                      <a href={heroArticle.source_type === 'manual' ? `/article/${heroArticle.id}` : (heroArticle.original_link || '#')} target={heroArticle.source_type === 'manual' ? '_self' : '_blank'} className="block">
+                        <div className="relative aspect-[16/9] overflow-hidden mb-4">
+                          <img src={heroArticle.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="기사 썸네일"/>
+                          <span className={`absolute top-3 left-3 text-white text-xs font-bold px-2 py-1 ${heroArticle.source_type === 'manual' ? 'bg-red-600' : 'bg-gray-900'}`}>{heroArticle.source_type === 'manual' ? '단독' : '타 언론사'}</span>
                         </div>
-                        <div className="p-5 flex-1 flex flex-col justify-between">
-                          <div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-700 transition-colors">{article.title}</h3>
-                            <p className="text-gray-600 text-sm line-clamp-2">{article.summary}</p>
-                          </div>
-                          <div className="text-xs text-gray-400 mt-4 font-medium flex items-center gap-3">
-                            <span>{new Date(article.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                            {article.source_type === 'manual' && <span>❤️ {article.likes || 0}</span>}
-                          </div>
+                        <h3 className="font-serif text-2xl md:text-3xl font-black text-gray-900 leading-snug mb-3 group-hover:underline">{heroArticle.title}</h3>
+                        <p className="text-gray-600 leading-relaxed line-clamp-2 mb-3">{heroArticle.summary}</p>
+                        <div className="text-xs text-gray-400 font-medium flex items-center gap-3">
+                          <span>{new Date(heroArticle.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                          {heroArticle.source_type === 'manual' && <span>❤️ {heroArticle.likes || 0}</span>}
                         </div>
                       </a>
                     </div>
-                  ))
-                )}
-              </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-8">
+                    {gridArticles.map((article) => (
+                      <div key={article.id} className="relative group">
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => handleDeleteArticle(article.id, e)}
+                            className="absolute top-2 right-2 z-10 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow-md"
+                          >
+                            삭제
+                          </button>
+                        )}
+                        <a href={article.source_type === 'manual' ? `/article/${article.id}` : (article.original_link || '#')} target={article.source_type === 'manual' ? '_self' : '_blank'} className="block">
+                          <div className="relative aspect-[4/3] overflow-hidden mb-3">
+                            <img src={article.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="기사 썸네일"/>
+                            <span className={`absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 ${article.source_type === 'manual' ? 'bg-red-600' : 'bg-gray-900'}`}>{article.source_type === 'manual' ? '단독' : '타 언론사'}</span>
+                          </div>
+                          <h3 className="font-serif text-lg font-bold text-gray-900 leading-snug mb-1.5 line-clamp-2 group-hover:underline">{article.title}</h3>
+                          <p className="text-gray-500 text-sm line-clamp-2 mb-2">{article.summary}</p>
+                          <div className="text-xs text-gray-400 font-medium flex items-center gap-3">
+                            <span>{new Date(article.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            {article.source_type === 'manual' && <span>❤️ {article.likes || 0}</span>}
+                          </div>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 mt-10">
-                  {startPage > 1 && <button onClick={() => setCurrentPage(startPage - 1)} className="w-10 h-10 rounded-xl font-bold transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center justify-center">◀</button>}
+                  {startPage > 1 && <button onClick={() => setCurrentPage(startPage - 1)} className="w-9 h-9 font-bold transition-all bg-white text-gray-600 hover:bg-gray-100 border border-gray-300 flex items-center justify-center">◀</button>}
                   {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map(page => (
-                    <button key={page} onClick={() => setCurrentPage(page)} className={`w-10 h-10 rounded-xl font-bold transition-all shadow-sm ${currentPage === page ? 'bg-blue-700 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}>{page}</button>
+                    <button key={page} onClick={() => setCurrentPage(page)} className={`w-9 h-9 font-bold transition-all ${currentPage === page ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-300'}`}>{page}</button>
                   ))}
-                  {endPage < totalPages && <button onClick={() => setCurrentPage(endPage + 1)} className="w-10 h-10 rounded-xl font-bold transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 flex items-center justify-center">▶</button>}
+                  {endPage < totalPages && <button onClick={() => setCurrentPage(endPage + 1)} className="w-9 h-9 font-bold transition-all bg-white text-gray-600 hover:bg-gray-100 border border-gray-300 flex items-center justify-center">▶</button>}
                 </div>
               )}
             </>

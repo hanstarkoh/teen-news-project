@@ -1,8 +1,18 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const notoSans = Noto_Sans_KR({
+  subsets: ["latin"],
+  weight: ["400", "500", "700", "900"],
+  variable: "--font-sans-kr",
+});
+
+const notoSerif = Noto_Serif_KR({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "900"],
+  variable: "--font-serif-kr",
+});
 
 export const metadata: Metadata = {
   // ⭐️ 검색 결과에 뜨는 굵은 파란색 제목
@@ -37,7 +47,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={inter.className}>{children}</body>
+      <body className={`${notoSans.variable} ${notoSerif.variable} font-sans`}>{children}</body>
     </html>
   );
 }
