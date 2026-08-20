@@ -117,6 +117,11 @@ export default function Home() {
   const heroArticle = paginatedArticles[0];
   const gridArticles = showHero ? paginatedArticles.slice(1) : paginatedArticles;
 
+  const popularArticles = [...articles]
+    .filter(a => a.source_type === 'manual')
+    .sort((a, b) => (b.views || 0) - (a.views || 0))
+    .slice(0, 5);
+
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 
   return (
@@ -213,6 +218,7 @@ export default function Home() {
                         <div className="text-xs text-gray-400 font-medium flex items-center gap-3">
                           <span>{new Date(heroArticle.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                           {heroArticle.source_type === 'manual' && <span>❤️ {heroArticle.likes || 0}</span>}
+                          {heroArticle.source_type === 'manual' && <span>👁 {heroArticle.views || 0}</span>}
                         </div>
                       </a>
                     </div>
@@ -239,6 +245,7 @@ export default function Home() {
                           <div className="text-xs text-gray-400 font-medium flex items-center gap-3">
                             <span>{new Date(article.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                             {article.source_type === 'manual' && <span>❤️ {article.likes || 0}</span>}
+                            {article.source_type === 'manual' && <span>👁 {article.views || 0}</span>}
                           </div>
                         </a>
                       </div>
@@ -260,7 +267,26 @@ export default function Home() {
           )}
         </section>
 
-        <aside className="w-full md:w-1/4 space-y-6">
+        <aside className="w-full md:w-1/4 space-y-8">
+          {popularArticles.length > 0 && (
+            <div>
+              <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-gray-900 pb-2">🔥 인기 기사</h3>
+              <ol className="space-y-3">
+                {popularArticles.map((article, i) => (
+                  <li key={article.id}>
+                    <a href={`/article/${article.id}`} className="flex items-start gap-3 group">
+                      <span className={`font-serif font-black text-lg leading-none ${i === 0 ? 'text-red-600' : 'text-gray-300'}`}>{i + 1}</span>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-gray-900 leading-snug line-clamp-2 group-hover:underline">{article.title}</h4>
+                        <span className="text-xs text-gray-400">조회 {(article.views || 0).toLocaleString()}</span>
+                      </div>
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
           <h3 className="font-bold text-gray-400 text-sm flex items-center gap-2"><span className="w-full h-px bg-gray-300"></span> AD <span className="w-full h-px bg-gray-300"></span></h3>
           <div className="flex flex-col gap-6">
             {ads.map((ad) => (

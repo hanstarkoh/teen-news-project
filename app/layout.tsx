@@ -38,6 +38,13 @@ export const metadata: Metadata = {
       "naver-site-verification": "18cb8f44310631fee4d91335bc5d76b7b5e0454e",
     },
   },
+
+  // ⭐️ RSS 피드 (네이버 뉴스 등록, RSS 리더 구독용)
+  alternates: {
+    types: {
+      "application/rss+xml": "https://busanyouthnews.co.kr/feed.xml",
+    },
+  },
 };
 
 export default function RootLayout({

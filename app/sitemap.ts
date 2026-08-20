@@ -1,6 +1,20 @@
 import { MetadataRoute } from 'next'
+import { supabase } from '@/lib/supabase'
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const { data: articles } = await supabase
+    .from('articles')
+    .select('id, published_at')
+    .eq('source_type', 'manual')
+    .order('published_at', { ascending: false })
+
+  const articleUrls: MetadataRoute.Sitemap = (articles || []).map((article) => ({
+    url: `https://busanyouthnews.co.kr/article/${article.id}`,
+    lastModified: new Date(article.published_at),
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }))
+
   return [
     {
       url: 'https://busanyouthnews.co.kr',
@@ -14,5 +28,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 0.8, // 제보 페이지도 중요함
     },
+    ...articleUrls,
   ]
 }

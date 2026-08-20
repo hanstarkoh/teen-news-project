@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams, useRouter } from 'next/navigation';
 
+const REACTIONS = [
+  { key: 'reaction_wow', emoji: '😲', label: '놀라워요' },
+  { key: 'reaction_love', emoji: '😍', label: '최고예요' },
+  { key: 'reaction_clap', emoji: '👏', label: '응원해요' },
+] as const;
+
 export default function ArticlePage() {
   const params = useParams();
   const router = useRouter();
@@ -11,8 +17,9 @@ export default function ArticlePage() {
 
   const [article, setArticle] = useState<any>(null);
   const [ads, setAds] = useState<any[]>([]);
+  const [relatedArticles, setRelatedArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -22,6 +29,10 @@ export default function ArticlePage() {
   // ⭐️ 좋아요 상태 추가
   const [liked, setLiked] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
+
+  // ⭐️ 이모지 리액션 상태 추가
+  const [myReactions, setMyReactions] = useState<string[]>([]);
+  const [reactionLoading, setReactionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') setIsAdmin(true);
@@ -34,11 +45,36 @@ export default function ArticlePage() {
         setEditTitle(artData.title);
         setEditSummary(artData.summary);
         setEditImageUrl(artData.thumbnail_url || '');
+
+        // ⭐️ 조회수 집계 (브라우저당 1회만)
+        if (typeof window !== 'undefined') {
+          const viewedArticles: number[] = JSON.parse(localStorage.getItem('viewedArticles') || '[]');
+          if (!viewedArticles.includes(Number(id))) {
+            const nextViews = (artData.views || 0) + 1;
+            await supabase.from('articles').update({ views: nextViews }).eq('id', id);
+            setArticle((prev: any) => ({ ...prev, views: nextViews }));
+            localStorage.setItem('viewedArticles', JSON.stringify([...viewedArticles, Number(id)]));
+          }
+        }
+
+        if (artData.source_type === 'manual') {
+          const { data: related } = await supabase
+            .from('articles')
+            .select('id, title, thumbnail_url, published_at')
+            .eq('source_type', 'manual')
+            .neq('id', id)
+            .order('published_at', { ascending: false })
+            .limit(3);
+          if (related) setRelatedArticles(related);
+        }
       }
 
       if (typeof window !== 'undefined') {
         const likedArticles: number[] = JSON.parse(localStorage.getItem('likedArticles') || '[]');
         setLiked(likedArticles.includes(Number(id)));
+
+        const reactionsMap = JSON.parse(localStorage.getItem('articleReactions') || '{}');
+        setMyReactions(reactionsMap[id] || []);
       }
 
       const { data: adData } = await supabase.from('articles').select('*').eq('source_type', 'ad').order('published_at', { ascending: false });
@@ -84,6 +120,28 @@ export default function ArticlePage() {
       alert('좋아요 처리에 실패했습니다.');
     }
     setLikeLoading(false);
+  };
+
+  // ⭐️ 이모지 리액션 토글 함수 (누구나 클릭 가능, 브라우저당 1회)
+  const handleReaction = async (key: string) => {
+    if (reactionLoading || !article) return;
+    setReactionLoading(key);
+
+    const reactionsMap = JSON.parse(localStorage.getItem('articleReactions') || '{}');
+    const alreadyReacted = myReactions.includes(key);
+    const nextCount = (article[key] || 0) + (alreadyReacted ? -1 : 1);
+
+    const { error } = await supabase.from('articles').update({ [key]: nextCount }).eq('id', id);
+    if (!error) {
+      setArticle({ ...article, [key]: nextCount });
+      const nextMyReactions = alreadyReacted ? myReactions.filter(r => r !== key) : [...myReactions, key];
+      setMyReactions(nextMyReactions);
+      reactionsMap[id] = nextMyReactions;
+      localStorage.setItem('articleReactions', JSON.stringify(reactionsMap));
+    } else {
+      alert('반응 처리에 실패했습니다.');
+    }
+    setReactionLoading(null);
   };
 
   const handleUpdate = async () => {
@@ -144,6 +202,8 @@ export default function ArticlePage() {
                     <span className="font-bold text-gray-700">부산청소년뉴스</span>
                     <span className="mx-2 text-gray-300">|</span>
                     <span>입력 {new Date(article.published_at).toLocaleString('ko-KR')}</span>
+                    <span className="mx-2 text-gray-300">|</span>
+                    <span>조회 {(article.views || 0).toLocaleString()}</span>
                   </div>
                   <button
                     onClick={handleLike}
@@ -153,6 +213,25 @@ export default function ArticlePage() {
                     <span>{liked ? '❤️' : '🤍'}</span>
                     <span>{article.likes || 0}</span>
                   </button>
+                </div>
+
+                <div className="flex items-center gap-2 pt-4">
+                  <span className="text-sm font-bold text-gray-400 mr-1">이 기사 어때요?</span>
+                  {REACTIONS.map(({ key, emoji, label }) => {
+                    const active = myReactions.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleReaction(key)}
+                        disabled={reactionLoading !== null}
+                        title={label}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-sm border transition-colors ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-300 hover:border-blue-300 hover:text-blue-600'}`}
+                      >
+                        <span>{emoji}</span>
+                        <span>{article[key] || 0}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </header>
 
@@ -174,6 +253,22 @@ export default function ArticlePage() {
                   <span className="font-bold text-gray-600 group-hover:text-gray-900">📷 원본 사진/게시물 더 보러가기</span>
                   <span className="text-gray-400 group-hover:text-gray-900">↗</span>
                 </a>
+              )}
+
+              {relatedArticles.length > 0 && (
+                <div className="mt-14 pt-8 border-t-2 border-gray-900">
+                  <h2 className="font-serif font-black text-xl text-gray-900 mb-5">관련 기사</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    {relatedArticles.map((rel) => (
+                      <a key={rel.id} href={`/article/${rel.id}`} className="group block">
+                        <div className="relative aspect-[4/3] overflow-hidden mb-2">
+                          <img src={rel.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="관련 기사 썸네일" />
+                        </div>
+                        <h3 className="font-serif text-sm font-bold text-gray-900 leading-snug line-clamp-2 group-hover:underline">{rel.title}</h3>
+                      </a>
+                    ))}
+                  </div>
+                </div>
               )}
             </>
           )}
