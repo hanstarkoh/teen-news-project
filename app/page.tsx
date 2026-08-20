@@ -18,22 +18,27 @@ export default function Home() {
   const PAGE_GROUP_SIZE = 10;
 
   const [isAdmin, setIsAdmin] = useState(false);
-  const [user, setUser] = useState<any>(null); 
   const [isScraping, setIsScraping] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
     const checkLogin = () => {
-      if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') setIsAdmin(true);
-      else setIsAdmin(false);
+      const admin = typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true';
+      setIsAdmin(admin);
+      if (admin) fetchPendingRequests();
     };
     checkLogin();
-    
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+
     fetchData();
     window.addEventListener('storage', checkLogin);
     return () => window.removeEventListener('storage', checkLogin);
   }, []);
+
+  const fetchPendingRequests = async () => {
+    const { count } = await supabase.from('requests').select('id', { count: 'exact', head: true });
+    setPendingRequests(count || 0);
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -52,13 +57,6 @@ export default function Home() {
     localStorage.removeItem('byNewsAdmin');
     setIsAdmin(false);
     alert('편집장 모드 로그아웃 되었습니다.');
-    window.location.reload();
-  };
-
-  const handleUserLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    alert('로그아웃 되었습니다.');
     window.location.reload();
   };
 
@@ -130,21 +128,19 @@ export default function Home() {
           <div className="flex items-center gap-4 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden">
             <a href="/hotplace" className="hover:text-white transition">핫플 지도</a>
             <a href="/bamboo" className="hover:text-white transition">대나무숲</a>
-            {(user || isAdmin) && <a href="/request" className="hover:text-white transition">기사 제보</a>}
-            {!isAdmin && (
-              user ? (
-                <button onClick={handleUserLogout} className="hover:text-white transition">기자 로그아웃</button>
-              ) : (
-                <a href="/login" className="hover:text-white transition">기자단 로그인</a>
-              )
-            )}
+            <a href="/request" className="hover:text-white transition">기사 제보</a>
             {isAdmin ? (
               <>
                 <a href="/admin/desk" className="hover:text-white transition">AI 데스크</a>
                 <button onClick={handleScrape} disabled={isScraping} className="hover:text-white transition disabled:text-gray-500">
                   {isScraping ? '수집 중...' : '타 언론사 수집'}
                 </button>
-                <a href="/admin/requests" className="hover:text-white transition">제보 확인</a>
+                <a href="/admin/requests" className="hover:text-white transition flex items-center gap-1">
+                  제보 확인
+                  {pendingRequests > 0 && (
+                    <span className="bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingRequests > 9 ? '9+' : pendingRequests}</span>
+                  )}
+                </a>
                 <a href="/write" className="hover:text-white transition">기사 쓰기</a>
                 <a href="/ad" className="hover:text-white transition">광고 추가</a>
                 <button onClick={handleAdminLogout} className="hover:text-white transition">로그아웃</button>

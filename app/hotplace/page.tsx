@@ -14,7 +14,7 @@ declare global {
 export default function HotPlacePage() {
   const [map, setMap] = useState<any>(null);
   const [places, setPlaces] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [selectedLatLng, setSelectedLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [title, setTitle] = useState('');
@@ -28,13 +28,28 @@ export default function HotPlacePage() {
   const markersRef = useRef<any[]>([]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') setIsAdmin(true);
     fetchPlaces();
   }, []);
 
   const fetchPlaces = async () => {
     const { data } = await supabase.from('hotplaces').select('*').order('created_at', { ascending: false });
     if (data) setPlaces(data);
+  };
+
+  const approvedPlaces = places.filter(p => p.approved);
+  const pendingPlaces = places.filter(p => !p.approved);
+
+  const handleApprovePlace = async (id: number) => {
+    await supabase.from('hotplaces').update({ approved: true }).eq('id', id);
+    fetchPlaces();
+  };
+
+  const handleDeletePlace = async (id: number) => {
+    if (window.confirm('이 핫플을 삭제하시겠습니까?')) {
+      await supabase.from('hotplaces').delete().eq('id', id);
+      fetchPlaces();
+    }
   };
 
   // ⭐️ API 키 없이 완전 무료 지도를 가져오는 마법의 로직
@@ -88,15 +103,15 @@ export default function HotPlacePage() {
     }
   }, []);
 
-  // ⭐️ 데이터베이스에 있는 핫플들 지도에 뿌려주기
+  // ⭐️ 승인된 핫플만 지도에 뿌려주기
   useEffect(() => {
-    if (!map || places.length === 0 || !window.L) return;
+    if (!map || !window.L) return;
 
     // 기존 핀 지우기
     markersRef.current.forEach(m => map.removeLayer(m));
     markersRef.current = [];
 
-    places.forEach(place => {
+    approvedPlaces.forEach(place => {
       const marker = window.L.marker([place.lat, place.lng]).addTo(map);
       
       const popupContent = `
@@ -114,19 +129,15 @@ export default function HotPlacePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      alert('기자단 로그인 후 핫플을 추가할 수 있습니다!');
-      return;
-    }
     if (!selectedLatLng) return;
 
     setSubmitting(true);
     const { error } = await supabase.from('hotplaces').insert([{
-      title, category, description, lat: selectedLatLng.lat, lng: selectedLatLng.lng
+      title, category, description, lat: selectedLatLng.lat, lng: selectedLatLng.lng, approved: false
     }]);
 
     if (!error) {
-      alert('🎉 새로운 핫플레이스가 등록되었습니다!');
+      alert('🎉 등록되었습니다! 편집장 승인 후 지도에 표시됩니다.');
       setTitle('');
       setDescription('');
       setSelectedLatLng(null);
@@ -187,11 +198,31 @@ export default function HotPlacePage() {
             <div className="bg-gradient-to-br from-indigo-500 to-blue-600 p-6 rounded-3xl shadow-md text-white">
               <h3 className="font-bold text-lg mb-2">💡 이용 가이드</h3>
               <ul className="text-sm space-y-2 opacity-90">
-                <li>• 핫플 등록은 <b>로그인한 기자단</b>만 가능해요.</li>
+                <li>• 누구나 핫플을 등록할 수 있어요.</li>
+                <li>• 편집장 승인 후에 지도에 표시됩니다.</li>
                 <li>• 부적절한 장소 등록 시 관리자에 의해 삭제될 수 있습니다.</li>
                 <li>• 지도에 찍힌 핀을 클릭하면 정보를 볼 수 있어요!</li>
               </ul>
             </div>
+
+            {isAdmin && pendingPlaces.length > 0 && (
+              <div className="bg-white p-6 rounded-3xl shadow-md border border-orange-200">
+                <h3 className="font-bold text-lg mb-4 text-orange-600">🕵️ 승인 대기 중인 핫플 ({pendingPlaces.length})</h3>
+                <div className="space-y-3">
+                  {pendingPlaces.map(place => (
+                    <div key={place.id} className="border border-gray-200 rounded-2xl p-4">
+                      <div className="font-bold text-gray-900">{place.title}</div>
+                      <div className="text-xs text-gray-400 font-bold mb-1">{place.category}</div>
+                      <p className="text-sm text-gray-600 mb-3">{place.description}</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleApprovePlace(place.id)} className="flex-1 bg-blue-600 text-white text-sm font-bold py-2 rounded-xl hover:bg-blue-700">승인</button>
+                        <button onClick={() => handleDeletePlace(place.id)} className="flex-1 bg-red-100 text-red-600 text-sm font-bold py-2 rounded-xl hover:bg-red-200">삭제</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
