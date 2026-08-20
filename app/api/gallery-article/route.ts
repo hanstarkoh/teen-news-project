@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import { gallerySources } from '@/lib/gallerySources';
 import { scrapeFetch, scrapeText } from '@/lib/scrapeFetch';
+import { blurFacesUrl } from '@/lib/cloudinary';
 
 export async function POST(req: Request) {
   try {
@@ -43,7 +44,13 @@ export async function POST(req: Request) {
       너는 부산 청소년 뉴스의 전문 기자야.
       첨부된 사진은 "${source.name}"의 행사 현장 사진이고, 아래는 관련 텍스트야.
       사진 속 현장의 분위기와 텍스트 내용을 종합하여, 전문적인 뉴스 기사톤(~했습니다, ~밝혔습니다)으로 보도 기사를 작성해줘.
-      단, 초상권 보호를 위해 사진에 찍힌 사람들의 구체적인 인상착의나 얼굴은 절대 묘사하지 말고, 전체적인 현장 분위기만 서술해.
+
+      반드시 지켜야 할 규칙 (매우 중요, 절대 위반하지 마):
+      1. [원본 텍스트]에 실제로 없는 내용은 절대로 지어내지 마.
+      2. 특히 "관계자는 ~라고 밝혔다", "~라고 전했다", "~라며 말했다" 같은 직접/간접 인용문은 [원본 텍스트]에 실제로 그런 발언이 적혀 있을 때만 써. 원본에 없는 발언·소감·코멘트를 절대로 지어내서 인용부호로 만들지 마.
+      3. 확인되지 않은 숫자, 날짜, 통계, 계획을 추가하지 마.
+      4. 인용할 발언이 없으면 그냥 "~진행됐다", "~열렸다", "~운영했다"처럼 사실을 서술하는 문장으로만 기사를 구성해.
+      5. 초상권 보호를 위해 사진에 찍힌 사람들의 구체적인 인상착의나 얼굴은 절대 묘사하지 말고, 전체적인 현장 분위기만 서술해.
 
       형식:
       제목: [기사 제목]
@@ -81,7 +88,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       title: titleMatch ? stripStrayAsterisks(titleMatch[1]) : (listTitle || '제목 없음'),
       content: contentMatch ? stripStrayAsterisks(contentMatch[1]) : aiText,
-      sourceImage: imageUrl,
+      sourceImage: blurFacesUrl(imageUrl),
     });
 
   } catch (error) {

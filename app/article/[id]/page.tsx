@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams, useRouter } from 'next/navigation';
+import { getSourceNameByLink } from '@/lib/gallerySources';
 
 const REACTIONS = [
   { key: 'reaction_wow', emoji: '😲', label: '놀라워요' },
@@ -157,6 +158,7 @@ export default function ArticlePage() {
   if (!article) return <div className="p-20 text-center text-red-500 text-xl font-bold">기사를 찾을 수 없습니다.</div>;
 
   const defaultImage = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop";
+  const sourceName = getSourceNameByLink(article.original_link);
 
   return (
     <div className="min-h-screen bg-white pb-20">
@@ -194,7 +196,7 @@ export default function ArticlePage() {
             <>
               <header className="mb-6">
                 <span className={`inline-block font-bold text-xs px-2 py-1 mb-4 ${article.source_type === 'manual' ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'}`}>
-                  {article.source_type === 'manual' ? '단독 보도' : '타 언론사 기사'}
+                  {article.source_type === 'manual' ? '자체기사' : '타 언론사 기사'}
                 </span>
                 <h1 className="font-serif text-3xl md:text-4xl font-black text-gray-900 leading-tight mb-5">{article.title}</h1>
                 <div className="flex items-center justify-between border-y border-gray-200 py-3">
@@ -237,20 +239,28 @@ export default function ArticlePage() {
 
               <div className="mb-8">
                 <img src={article.thumbnail_url || defaultImage} alt="본문 이미지" className="w-full h-auto object-cover"/>
+                {sourceName && (
+                  <p className="text-xs text-gray-400 mt-2">사진·내용 출처: {sourceName}</p>
+                )}
               </div>
 
               <article className="text-gray-800 text-lg leading-loose whitespace-pre-wrap break-words">
                 {article.summary}
               </article>
 
+              <div className="mt-8 text-xs text-gray-400 border-t border-gray-100 pt-4 space-y-1">
+                {sourceName && <p>이 기사는 {sourceName}이 공개한 자료를 바탕으로 작성되었습니다.</p>}
+                <p>기사 내용에 오류가 있거나 정정·삭제를 요청하실 경우 <a href="mailto:rhgksquf456@busanyouthnews.co.kr" className="underline hover:text-gray-700">rhgksquf456@busanyouthnews.co.kr</a>로 연락해 주세요.</p>
+              </div>
+
               {article.original_link && (
                 <a
                   href={article.original_link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-10 flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-gray-200 px-6 py-4 transition-colors group"
+                  className="mt-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-gray-200 px-6 py-4 transition-colors group"
                 >
-                  <span className="font-bold text-gray-600 group-hover:text-gray-900">📷 원본 사진/게시물 더 보러가기</span>
+                  <span className="font-bold text-gray-600 group-hover:text-gray-900">📷 {sourceName ? `${sourceName} ` : ''}원본 사진/게시물 더 보러가기</span>
                   <span className="text-gray-400 group-hover:text-gray-900">↗</span>
                 </a>
               )}

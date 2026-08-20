@@ -166,7 +166,7 @@ export default function Home() {
         <nav className="border-t border-gray-200">
           <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-8 text-sm font-bold">
             <button onClick={() => setFilter('all')} className={`py-3 border-b-2 transition ${filter === 'all' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>전체 기사</button>
-            <button onClick={() => setFilter('manual')} className={`py-3 border-b-2 transition ${filter === 'manual' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>단독 보도</button>
+            <button onClick={() => setFilter('manual')} className={`py-3 border-b-2 transition ${filter === 'manual' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>자체기사</button>
             <button onClick={() => setFilter('scraped')} className={`py-3 border-b-2 transition ${filter === 'scraped' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>타 언론사</button>
           </div>
         </nav>
@@ -192,7 +192,7 @@ export default function Home() {
 
         <section className="w-full md:w-2/4 flex flex-col">
           <div className="flex justify-between items-end mb-6 border-b-4 border-gray-900 pb-2">
-            <h2 className="font-serif text-2xl font-black text-gray-900">{filter === 'all' ? '최신 뉴스' : filter === 'manual' ? '단독 보도' : '타 언론사 뉴스'}</h2>
+            <h2 className="font-serif text-2xl font-black text-gray-900">{filter === 'all' ? '최신 뉴스' : filter === 'manual' ? '자체기사' : '타 언론사 뉴스'}</h2>
             <span className="text-gray-400 font-bold text-xs">총 {filteredArticles.length}건</span>
           </div>
           {loading ? (
@@ -211,7 +211,7 @@ export default function Home() {
                       <a href={heroArticle.source_type === 'manual' ? `/article/${heroArticle.id}` : (heroArticle.original_link || '#')} target={heroArticle.source_type === 'manual' ? '_self' : '_blank'} className="block">
                         <div className="relative aspect-[16/9] overflow-hidden mb-4">
                           <img src={heroArticle.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="기사 썸네일"/>
-                          <span className={`absolute top-3 left-3 text-white text-xs font-bold px-2 py-1 ${heroArticle.source_type === 'manual' ? 'bg-red-600' : 'bg-gray-900'}`}>{heroArticle.source_type === 'manual' ? '단독' : '타 언론사'}</span>
+                          <span className={`absolute top-3 left-3 text-white text-xs font-bold px-2 py-1 ${heroArticle.source_type === 'manual' ? 'bg-red-600' : 'bg-gray-900'}`}>{heroArticle.source_type === 'manual' ? '자체' : '타 언론사'}</span>
                         </div>
                         <h3 className="font-serif text-2xl md:text-3xl font-black text-gray-900 leading-snug mb-3 group-hover:underline">{heroArticle.title}</h3>
                         <p className="text-gray-600 leading-relaxed line-clamp-2 mb-3">{heroArticle.summary}</p>
@@ -238,7 +238,7 @@ export default function Home() {
                         <a href={article.source_type === 'manual' ? `/article/${article.id}` : (article.original_link || '#')} target={article.source_type === 'manual' ? '_self' : '_blank'} className="block">
                           <div className="relative aspect-[4/3] overflow-hidden mb-3">
                             <img src={article.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="기사 썸네일"/>
-                            <span className={`absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 ${article.source_type === 'manual' ? 'bg-red-600' : 'bg-gray-900'}`}>{article.source_type === 'manual' ? '단독' : '타 언론사'}</span>
+                            <span className={`absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 ${article.source_type === 'manual' ? 'bg-red-600' : 'bg-gray-900'}`}>{article.source_type === 'manual' ? '자체' : '타 언론사'}</span>
                           </div>
                           <h3 className="font-serif text-lg font-bold text-gray-900 leading-snug mb-1.5 line-clamp-2 group-hover:underline">{article.title}</h3>
                           <p className="text-gray-500 text-sm line-clamp-2 mb-2">{article.summary}</p>

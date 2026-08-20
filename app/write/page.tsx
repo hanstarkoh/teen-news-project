@@ -178,7 +178,7 @@ export default function WritePage() {
 
           <div className="grid grid-cols-2 gap-4">
             <select className="p-4 border rounded-xl font-bold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500" value={sourceType} onChange={(e) => setSourceType(e.target.value)}>
-              <option value="manual">단독 보도</option>
+              <option value="manual">자체기사</option>
               <option value="scraped">타 언론사/기관 소식</option>
               <option value="ad">배너 광고</option>
             </select>

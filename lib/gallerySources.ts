@@ -210,3 +210,18 @@ export const gallerySources: GallerySource[] = [
     viewContainerSelector: 'table:has(> tbody > tr > td > a > img[src*="bbsData"])',
   },
 ];
+
+// 기사의 원본 링크(original_link)가 등록된 기관 사이트와 일치하면 기관명을 돌려줍니다.
+// 기사 상세 페이지에서 "사진/내용 출처" 표기에 사용합니다.
+export function getSourceNameByLink(originalLink?: string | null): string | null {
+  if (!originalLink) return null;
+  try {
+    const host = new URL(originalLink).hostname.replace(/^www\./, '');
+    const match = gallerySources.find(
+      (s) => new URL(s.listUrl).hostname.replace(/^www\./, '') === host
+    );
+    return match ? match.name : null;
+  } catch {
+    return null;
+  }
+}
