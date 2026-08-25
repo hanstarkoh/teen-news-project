@@ -37,6 +37,11 @@ export async function POST(req: Request) {
     const base64Image = buffer.toString('base64');
     const mimeType = imageRes.headers.get('content-type') || 'image/jpeg';
 
+    // Cloudinary 무료 플랜의 fetch 용량 한도(10MB)를 넘는 사진은 블러 처리가 아예 실패해서
+    // 깨진 이미지로 뜨므로, 이런 경우엔 사진 없이(기본 이미지로) 발행되도록 합니다.
+    const CLOUDINARY_FETCH_LIMIT = 9_000_000;
+    const imageTooLargeForBlur = buffer.length > CLOUDINARY_FETCH_LIMIT;
+
     const apiKey = process.env.GEMINI_API_KEY;
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
@@ -88,7 +93,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       title: titleMatch ? stripStrayAsterisks(titleMatch[1]) : (listTitle || '제목 없음'),
       content: contentMatch ? stripStrayAsterisks(contentMatch[1]) : aiText,
-      sourceImage: blurFacesUrl(imageUrl),
+      sourceImage: imageTooLargeForBlur ? '' : blurFacesUrl(imageUrl),
     });
 
   } catch (error) {
