@@ -1,0 +1,311 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useParams, useRouter } from 'next/navigation';
+import { getSourceNameByLink } from '@/lib/gallerySources';
+
+const REACTIONS = [
+  { key: 'reaction_wow', emoji: '😲', label: '놀라워요' },
+  { key: 'reaction_love', emoji: '😍', label: '최고예요' },
+  { key: 'reaction_clap', emoji: '👏', label: '응원해요' },
+] as const;
+
+export default function ArticleClient() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params?.id as string;
+
+  const [article, setArticle] = useState<any>(null);
+  const [ads, setAds] = useState<any[]>([]);
+  const [relatedArticles, setRelatedArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editSummary, setEditSummary] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+
+  // ⭐️ 좋아요 상태 추가
+  const [liked, setLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+
+  // ⭐️ 이모지 리액션 상태 추가
+  const [myReactions, setMyReactions] = useState<string[]>([]);
+  const [reactionLoading, setReactionLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') setIsAdmin(true);
+
+    if (!id) return;
+    const fetchData = async () => {
+      const { data: artData } = await supabase.from('articles').select('*').eq('id', id).single();
+      if (artData) {
+        setArticle(artData);
+        setEditTitle(artData.title);
+        setEditSummary(artData.summary);
+        setEditImageUrl(artData.thumbnail_url || '');
+
+        // ⭐️ 조회수 집계 (브라우저당 1회만)
+        if (typeof window !== 'undefined') {
+          const viewedArticles: number[] = JSON.parse(localStorage.getItem('viewedArticles') || '[]');
+          if (!viewedArticles.includes(Number(id))) {
+            const nextViews = (artData.views || 0) + 1;
+            await supabase.from('articles').update({ views: nextViews }).eq('id', id);
+            setArticle((prev: any) => ({ ...prev, views: nextViews }));
+            localStorage.setItem('viewedArticles', JSON.stringify([...viewedArticles, Number(id)]));
+          }
+        }
+
+        if (artData.source_type === 'manual') {
+          const { data: related } = await supabase
+            .from('articles')
+            .select('id, title, thumbnail_url, published_at')
+            .eq('source_type', 'manual')
+            .neq('id', id)
+            .order('published_at', { ascending: false })
+            .limit(3);
+          if (related) setRelatedArticles(related);
+        }
+      }
+
+      if (typeof window !== 'undefined') {
+        const likedArticles: number[] = JSON.parse(localStorage.getItem('likedArticles') || '[]');
+        setLiked(likedArticles.includes(Number(id)));
+
+        const reactionsMap = JSON.parse(localStorage.getItem('articleReactions') || '{}');
+        setMyReactions(reactionsMap[id] || []);
+      }
+
+      const { data: adData } = await supabase.from('articles').select('*').eq('source_type', 'ad').order('published_at', { ascending: false });
+      if (adData) setAds(adData);
+
+      setLoading(false);
+    };
+    fetchData();
+  }, [id]);
+
+  const handleDeleteAd = async (adId: number) => {
+    if (window.confirm('이 광고를 삭제하시겠습니까?')) {
+      await supabase.from('articles').delete().eq('id', adId);
+      setAds(ads.filter(a => a.id !== adId));
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm('정말 이 기사를 완전히 삭제하시겠습니까?')) {
+      await supabase.from('articles').delete().eq('id', id);
+      router.push('/');
+    }
+  };
+
+  // ⭐️ 좋아요 토글 함수 (누구나 클릭 가능, 브라우저당 1회)
+  const handleLike = async () => {
+    if (likeLoading || !article) return;
+    setLikeLoading(true);
+
+    const likedArticles: number[] = JSON.parse(localStorage.getItem('likedArticles') || '[]');
+    const nextLiked = !liked;
+    const nextCount = (article.likes || 0) + (nextLiked ? 1 : -1);
+
+    const { error } = await supabase.from('articles').update({ likes: nextCount }).eq('id', id);
+    if (!error) {
+      setArticle({ ...article, likes: nextCount });
+      setLiked(nextLiked);
+      const updatedLikedArticles = nextLiked
+        ? [...likedArticles, Number(id)]
+        : likedArticles.filter(likedId => likedId !== Number(id));
+      localStorage.setItem('likedArticles', JSON.stringify(updatedLikedArticles));
+    } else {
+      alert('좋아요 처리에 실패했습니다.');
+    }
+    setLikeLoading(false);
+  };
+
+  // ⭐️ 이모지 리액션 토글 함수 (누구나 클릭 가능, 브라우저당 1회)
+  const handleReaction = async (key: string) => {
+    if (reactionLoading || !article) return;
+    setReactionLoading(key);
+
+    const reactionsMap = JSON.parse(localStorage.getItem('articleReactions') || '{}');
+    const alreadyReacted = myReactions.includes(key);
+    const nextCount = (article[key] || 0) + (alreadyReacted ? -1 : 1);
+
+    const { error } = await supabase.from('articles').update({ [key]: nextCount }).eq('id', id);
+    if (!error) {
+      setArticle({ ...article, [key]: nextCount });
+      const nextMyReactions = alreadyReacted ? myReactions.filter(r => r !== key) : [...myReactions, key];
+      setMyReactions(nextMyReactions);
+      reactionsMap[id] = nextMyReactions;
+      localStorage.setItem('articleReactions', JSON.stringify(reactionsMap));
+    } else {
+      alert('반응 처리에 실패했습니다.');
+    }
+    setReactionLoading(null);
+  };
+
+  const handleUpdate = async () => {
+    const { error } = await supabase.from('articles').update({ title: editTitle, summary: editSummary, thumbnail_url: editImageUrl }).eq('id', id);
+    if (!error) {
+      alert('기사가 성공적으로 수정되었습니다! ✨');
+      setArticle({ ...article, title: editTitle, summary: editSummary, thumbnail_url: editImageUrl });
+      setIsEditing(false);
+    }
+  };
+
+  if (loading) return <div className="p-20 text-center text-xl font-bold text-gray-500">기사를 불러오는 중입니다... 🌊</div>;
+  if (!article) return <div className="p-20 text-center text-red-500 text-xl font-bold">기사를 찾을 수 없습니다.</div>;
+
+  const defaultImage = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop";
+  const sourceName = getSourceNameByLink(article.original_link);
+
+  return (
+    <div className="min-h-screen bg-white pb-20">
+      <header className="border-b border-gray-900 bg-white sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <a href="/" className="font-serif text-2xl md:text-3xl font-black tracking-tight text-gray-900">BY NEWS</a>
+          <button onClick={() => router.push('/')} className="text-sm font-bold text-gray-500 hover:text-gray-900 transition">홈으로</button>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto mt-10 px-6 flex flex-col md:flex-row gap-10">
+        <div className="flex-1 max-w-3xl">
+          {isAdmin && article.source_type === 'manual' && (
+            <div className="mb-8 flex justify-end gap-3 bg-blue-50 p-4 rounded-2xl border border-blue-100">
+              <span className="mr-auto font-bold text-blue-700 my-auto">🛠️ 기사 관리 모드</span>
+              {!isEditing ? (
+                <>
+                  <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl shadow hover:bg-blue-700">수정</button>
+                  <button onClick={handleDelete} className="px-4 py-2 bg-red-500 text-white font-bold rounded-xl shadow hover:bg-red-600">삭제</button>
+                </>
+              ) : (
+                <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-400 text-white font-bold rounded-xl shadow">취소</button>
+              )}
+            </div>
+          )}
+
+          {isEditing ? (
+            <div className="space-y-4">
+              <input className="w-full p-4 border rounded-xl bg-gray-50 text-2xl font-bold text-gray-900" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              <input className="w-full p-4 border rounded-xl bg-gray-50 text-gray-900" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
+              <textarea className="w-full p-4 border rounded-xl bg-gray-50 h-96 text-gray-900" value={editSummary} onChange={(e) => setEditSummary(e.target.value)} />
+              <button onClick={handleUpdate} className="w-full bg-blue-700 text-white font-bold py-4 rounded-xl shadow hover:bg-blue-800">저장하기</button>
+            </div>
+          ) : (
+            <>
+              <header className="mb-6">
+                <span className={`inline-block font-bold text-xs px-2 py-1 mb-4 ${article.source_type === 'manual' ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'}`}>
+                  {article.source_type === 'manual' ? '자체기사' : '타 언론사 기사'}
+                </span>
+                <h1 className="font-serif text-3xl md:text-4xl font-black text-gray-900 leading-tight mb-5">{article.title}</h1>
+                <div className="flex items-center justify-between border-y border-gray-200 py-3">
+                  <div className="text-gray-500 text-sm">
+                    <span className="font-bold text-gray-700">부산청소년뉴스</span>
+                    <span className="mx-2 text-gray-300">|</span>
+                    <span>입력 {new Date(article.published_at).toLocaleString('ko-KR')}</span>
+                    <span className="mx-2 text-gray-300">|</span>
+                    <span>조회 {(article.views || 0).toLocaleString()}</span>
+                  </div>
+                  <button
+                    onClick={handleLike}
+                    disabled={likeLoading}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full font-bold text-sm border transition-colors ${liked ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-500 border-gray-300 hover:border-red-300 hover:text-red-500'}`}
+                  >
+                    <span>{liked ? '❤️' : '🤍'}</span>
+                    <span>{article.likes || 0}</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 pt-4">
+                  <span className="text-sm font-bold text-gray-400 mr-1">이 기사 어때요?</span>
+                  {REACTIONS.map(({ key, emoji, label }) => {
+                    const active = myReactions.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleReaction(key)}
+                        disabled={reactionLoading !== null}
+                        title={label}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-sm border transition-colors ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-300 hover:border-blue-300 hover:text-blue-600'}`}
+                      >
+                        <span>{emoji}</span>
+                        <span>{article[key] || 0}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </header>
+
+              <div className="mb-8">
+                <img src={article.thumbnail_url || defaultImage} alt="본문 이미지" className="w-full h-auto object-cover"/>
+                {sourceName && (
+                  <p className="text-xs text-gray-400 mt-2">사진·내용 출처: {sourceName}</p>
+                )}
+              </div>
+
+              <article className="text-gray-800 text-lg leading-loose whitespace-pre-wrap break-words">
+                {article.summary}
+              </article>
+
+              <div className="mt-8 text-xs text-gray-400 border-t border-gray-100 pt-4 space-y-1">
+                {sourceName && <p>이 기사는 {sourceName}이 공개한 자료를 바탕으로 작성되었습니다.</p>}
+                <p>기사 내용에 오류가 있거나 정정·삭제를 요청하실 경우 <a href="mailto:rhgksquf456@busanyouthnews.co.kr" className="underline hover:text-gray-700">rhgksquf456@busanyouthnews.co.kr</a>로 연락해 주세요.</p>
+              </div>
+
+              {article.original_link && (
+                <a
+                  href={article.original_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-gray-200 px-6 py-4 transition-colors group"
+                >
+                  <span className="font-bold text-gray-600 group-hover:text-gray-900">📷 {sourceName ? `${sourceName} ` : ''}원본 사진/게시물 더 보러가기</span>
+                  <span className="text-gray-400 group-hover:text-gray-900">↗</span>
+                </a>
+              )}
+
+              {relatedArticles.length > 0 && (
+                <div className="mt-14 pt-8 border-t-2 border-gray-900">
+                  <h2 className="font-serif font-black text-xl text-gray-900 mb-5">관련 기사</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    {relatedArticles.map((rel) => (
+                      <a key={rel.id} href={`/article/${rel.id}`} className="group block">
+                        <div className="relative aspect-[4/3] overflow-hidden mb-2">
+                          <img src={rel.thumbnail_url || defaultImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="관련 기사 썸네일" />
+                        </div>
+                        <h3 className="font-serif text-sm font-bold text-gray-900 leading-snug line-clamp-2 group-hover:underline">{rel.title}</h3>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <aside className="w-full md:w-80 space-y-8">
+          <div className="sticky top-24 space-y-6">
+            <h3 className="font-serif font-bold text-gray-900 text-sm border-b-2 border-gray-900 pb-2">광고</h3>
+            <div className="flex flex-col gap-6">
+              {ads.map((ad) => (
+                <div key={ad.id} className="group relative">
+                  <a href={ad.original_link} target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden border border-gray-200 bg-white aspect-[3/4]">
+                    <img src={ad.thumbnail_url} alt="광고" className="w-full h-full object-cover"/>
+                    <div className="absolute top-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 m-1 rounded">AD</div>
+                  </a>
+                  {isAdmin && (
+                    <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-blue-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">수정</button>
+                      <button onClick={() => handleDeleteAd(ad.id)} className="bg-red-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">삭제</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+  );
+}
