@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
+import sharp from 'sharp';
 import { gallerySources } from '@/lib/gallerySources';
 import { scrapeFetch, scrapeText } from '@/lib/scrapeFetch';
 import { blurFacesUrl } from '@/lib/cloudinary';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(req: Request) {
   try {
@@ -38,9 +40,33 @@ export async function POST(req: Request) {
     const mimeType = imageRes.headers.get('content-type') || 'image/jpeg';
 
     // Cloudinary 무료 플랜의 fetch 용량 한도(10MB)를 넘는 사진은 블러 처리가 아예 실패해서
-    // 깨진 이미지로 뜨므로, 이런 경우엔 사진 없이(기본 이미지로) 발행되도록 합니다.
+    // 깨진 이미지로 뜨므로, 이런 경우엔 sharp로 줄여서 Supabase Storage에 올린 뒤
+    // 그 축소본을 Cloudinary로 블러 처리합니다. 그래도 실패하면 사진 없이 발행됩니다.
     const CLOUDINARY_FETCH_LIMIT = 9_000_000;
-    const imageTooLargeForBlur = buffer.length > CLOUDINARY_FETCH_LIMIT;
+    let blurSourceUrl = imageUrl;
+    if (buffer.length > CLOUDINARY_FETCH_LIMIT) {
+      try {
+        const resizedBuffer = await sharp(buffer)
+          .resize({ width: 1600, withoutEnlargement: true })
+          .jpeg({ quality: 80 })
+          .toBuffer();
+
+        const filePath = `gallery_resized/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+        const { error: uploadError } = await supabaseAdmin.storage.from('images').upload(filePath, resizedBuffer, {
+          contentType: 'image/jpeg',
+        });
+
+        if (uploadError) {
+          console.error('리사이즈 이미지 업로드 실패:', uploadError);
+          blurSourceUrl = '';
+        } else {
+          blurSourceUrl = supabaseAdmin.storage.from('images').getPublicUrl(filePath).data.publicUrl;
+        }
+      } catch (resizeError) {
+        console.error('이미지 축소 실패:', resizeError);
+        blurSourceUrl = '';
+      }
+    }
 
     const apiKey = process.env.GEMINI_API_KEY;
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
@@ -93,7 +119,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       title: titleMatch ? stripStrayAsterisks(titleMatch[1]) : (listTitle || '제목 없음'),
       content: contentMatch ? stripStrayAsterisks(contentMatch[1]) : aiText,
-      sourceImage: imageTooLargeForBlur ? '' : blurFacesUrl(imageUrl),
+      sourceImage: blurSourceUrl ? blurFacesUrl(blurSourceUrl) : '',
     });
 
   } catch (error) {
