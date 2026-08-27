@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 
@@ -45,6 +45,23 @@ export const metadata: Metadata = {
       "application/rss+xml": "https://busanyouthnews.co.kr/feed.xml",
     },
   },
+
+  // ⭐️ 홈 화면에 추가(PWA)했을 때 쓰이는 아이콘들
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    title: "BY NEWS",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#111827",
 };
 
 export default function RootLayout({

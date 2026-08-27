@@ -2,14 +2,16 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { getSourceNameByLink } from '@/lib/gallerySources';
 
 export default function Home() {
   const [articles, setArticles] = useState<any[]>([]);
   const [ads, setAds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
+  const [institutionFilter, setInstitutionFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
@@ -51,7 +53,7 @@ export default function Home() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filter, startDate, endDate]);
+  }, [searchTerm, filter, institutionFilter, startDate, endDate]);
 
   const fetchData = async () => {
     const { data } = await supabase.from('articles').select('*').order('published_at', { ascending: false });
@@ -104,14 +106,23 @@ export default function Home() {
   const filteredArticles = articles.filter(article => {
     const matchSearch = article.title.includes(searchTerm) || article.summary.includes(searchTerm);
     const matchFilter = filter === 'all' || article.source_type === filter;
+    const matchInstitution = institutionFilter === 'all' || getSourceNameByLink(article.original_link) === institutionFilter;
     const articleDate = new Date(article.published_at);
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
     if (end) end.setHours(23, 59, 59, 999);
     const matchStartDate = start ? articleDate >= start : true;
     const matchEndDate = end ? articleDate <= end : true;
-    return matchSearch && matchFilter && matchStartDate && matchEndDate;
+    return matchSearch && matchFilter && matchInstitution && matchStartDate && matchEndDate;
   });
+
+  const availableInstitutions = Array.from(
+    new Set(
+      articles
+        .map(a => getSourceNameByLink(a.original_link))
+        .filter((name): name is string => Boolean(name))
+    )
+  ).sort();
 
   const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
   const paginatedArticles = filteredArticles.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -193,6 +204,21 @@ export default function Home() {
             <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-gray-900 pb-2">기사 검색</h3>
             <input type="text" placeholder="검색어를 입력하세요..." className="w-full p-3 border border-gray-300 focus:ring-1 focus:ring-gray-900 focus:border-gray-900 outline-none text-gray-900 text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
+          {availableInstitutions.length > 0 && (
+            <div>
+              <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-gray-900 pb-2">기관별 보기</h3>
+              <select
+                className="w-full p-3 border border-gray-300 text-sm outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 text-gray-900"
+                value={institutionFilter}
+                onChange={(e) => setInstitutionFilter(e.target.value)}
+              >
+                <option value="all">전체 기관</option>
+                {availableInstitutions.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-gray-900 pb-2">기간 검색</h3>
             <div className="flex flex-col space-y-2">
