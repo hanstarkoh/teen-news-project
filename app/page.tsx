@@ -20,13 +20,17 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isScraping, setIsScraping] = useState(false);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [pendingAutoDrafts, setPendingAutoDrafts] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
     const checkLogin = () => {
       const admin = typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true';
       setIsAdmin(admin);
-      if (admin) fetchPendingRequests();
+      if (admin) {
+        fetchPendingRequests();
+        fetchPendingAutoDrafts();
+      }
     };
     checkLogin();
 
@@ -38,6 +42,11 @@ export default function Home() {
   const fetchPendingRequests = async () => {
     const { count } = await supabase.from('requests').select('id', { count: 'exact', head: true });
     setPendingRequests(count || 0);
+  };
+
+  const fetchPendingAutoDrafts = async () => {
+    const { count } = await supabase.from('draft_articles').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+    setPendingAutoDrafts(count || 0);
   };
 
   useEffect(() => {
@@ -136,7 +145,12 @@ export default function Home() {
             <a href="/request" className="hover:text-white transition">기사 제보</a>
             {isAdmin ? (
               <>
-                <a href="/admin/desk" className="hover:text-white transition">AI 데스크</a>
+                <a href="/admin/desk" className="hover:text-white transition flex items-center gap-1">
+                  AI 데스크
+                  {pendingAutoDrafts > 0 && (
+                    <span className="bg-orange-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingAutoDrafts > 9 ? '9+' : pendingAutoDrafts}</span>
+                  )}
+                </a>
                 <button onClick={handleScrape} disabled={isScraping} className="hover:text-white transition disabled:text-gray-500">
                   {isScraping ? '수집 중...' : '타 언론사 수집'}
                 </button>

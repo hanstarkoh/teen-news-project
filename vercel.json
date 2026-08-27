@@ -7,6 +7,26 @@
     {
       "path": "/api/cleanup",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/generate-draft",
+      "schedule": "50 21 * * *"
+    },
+    {
+      "path": "/api/cron/generate-draft",
+      "schedule": "52 21 * * *"
+    },
+    {
+      "path": "/api/cron/generate-draft",
+      "schedule": "54 21 * * *"
+    },
+    {
+      "path": "/api/cron/generate-draft",
+      "schedule": "56 21 * * *"
+    },
+    {
+      "path": "/api/cron/generate-draft",
+      "schedule": "58 21 * * *"
     }
   ]
 }

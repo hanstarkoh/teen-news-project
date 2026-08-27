@@ -12,6 +12,9 @@ export default function AIDeskPage() {
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<{[key: number]: {title: string, content: string, url: string, imageUrl?: string}}>({});
 
+  const [autoDrafts, setAutoDrafts] = useState<any[]>([]);
+  const [loadingAutoDrafts, setLoadingAutoDrafts] = useState(true);
+
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
@@ -20,11 +23,50 @@ export default function AIDeskPage() {
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('byNewsAdmin') === 'true') {
       setIsAdmin(true);
+      fetchAutoDrafts();
     } else {
       alert('편집장 권한이 필요합니다!');
       router.push('/');
     }
   }, [router]);
+
+  const fetchAutoDrafts = async () => {
+    setLoadingAutoDrafts(true);
+    const { data } = await supabase.from('draft_articles').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+    if (data) setAutoDrafts(data);
+    setLoadingAutoDrafts(false);
+  };
+
+  const updateAutoDraft = (id: number, field: 'title' | 'content', value: string) => {
+    setAutoDrafts(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d));
+  };
+
+  const handlePublishAutoDraft = async (draft: any) => {
+    if (!window.confirm('이 초안을 메인 뉴스에 발행하시겠습니까?')) return;
+
+    const { error } = await supabase.from('articles').insert([{
+      title: draft.title,
+      summary: draft.content,
+      thumbnail_url: draft.image_url || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop',
+      source_type: 'manual',
+      original_link: draft.original_link,
+      published_at: new Date().toISOString(),
+    }]);
+
+    if (error) {
+      alert('발행 실패: ' + error.message);
+      return;
+    }
+    await supabase.from('draft_articles').delete().eq('id', draft.id);
+    alert('🎉 메인 뉴스에 발행되었습니다!');
+    setAutoDrafts(prev => prev.filter(d => d.id !== draft.id));
+  };
+
+  const handleDiscardAutoDraft = async (id: number) => {
+    if (!window.confirm('이 초안을 폐기하시겠습니까? (같은 게시물로는 다시 자동 생성되지 않습니다)')) return;
+    await supabase.from('draft_articles').update({ status: 'dismissed' }).eq('id', id);
+    setAutoDrafts(prev => prev.filter(d => d.id !== id));
+  };
 
   const handleSourceChange = (id: string) => {
     setSourceId(id);
@@ -117,6 +159,59 @@ export default function AIDeskPage() {
             <p className="text-gray-500 font-bold">타 기관 활동 갤러리를 검토하고 뉴스로 발행하는 컨트롤 타워입니다.</p>
           </div>
           <button onClick={() => router.push('/')} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-bold hover:bg-gray-200">홈으로</button>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-orange-200">
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="font-bold text-lg text-orange-700">🤖 자동 생성된 초안</h2>
+            {!loadingAutoDrafts && autoDrafts.length > 0 && (
+              <span className="bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{autoDrafts.length}</span>
+            )}
+          </div>
+          <p className="text-xs text-gray-400 mb-4">매일 새벽 여러 기관을 돌아가며 자동으로 만들어둔 초안입니다. 검수 후 발행하거나 폐기하세요.</p>
+
+          {loadingAutoDrafts ? (
+            <div className="text-center py-8 text-gray-400 font-bold text-sm">불러오는 중...</div>
+          ) : autoDrafts.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 font-bold text-sm">대기 중인 자동 초안이 없습니다.</div>
+          ) : (
+            <div className="space-y-4">
+              {autoDrafts.map((draft) => (
+                <div key={draft.id} className="border border-orange-100 rounded-2xl p-5 bg-orange-50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="bg-orange-200 text-orange-800 px-2 py-1 rounded text-xs font-bold">{draft.source_name}</span>
+                    <a href={draft.original_link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">원본 글 확인하기 ↗</a>
+                  </div>
+
+                  {draft.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={draft.image_url}
+                      alt="대표 이미지 미리보기"
+                      className="w-full max-h-64 object-cover rounded-xl mb-3 border border-gray-200"
+                    />
+                  )}
+                  <input
+                    className="w-full p-3 border border-gray-200 rounded-xl font-bold text-gray-900 mb-3 focus:border-orange-400 outline-none"
+                    value={draft.title}
+                    onChange={(e) => updateAutoDraft(draft.id, 'title', e.target.value)}
+                  />
+                  <textarea
+                    className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 h-40 focus:border-orange-400 outline-none leading-relaxed"
+                    value={draft.content}
+                    onChange={(e) => updateAutoDraft(draft.id, 'content', e.target.value)}
+                  />
+
+                  <div className="flex justify-end gap-3 mt-4">
+                    <button onClick={() => handleDiscardAutoDraft(draft.id)} className="px-5 py-2 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200">초안 폐기</button>
+                    <button onClick={() => handlePublishAutoDraft(draft)} className="px-6 py-2 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-md flex items-center gap-2">
+                      🚀 메인 뉴스에 발행하기
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
