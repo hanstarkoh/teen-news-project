@@ -19,13 +19,15 @@ export async function GET(req: Request) {
 
   const { data: existingPrograms } = await supabaseAdmin.from('programs').select('original_link');
   const seenLinks = new Set((existingPrograms || []).map(p => p.original_link).filter(Boolean));
+  const todayKST = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 
   const shuffledSources = [...programSources].sort(() => Math.random() - 0.5);
 
   for (const source of shuffledSources.slice(0, MAX_SOURCES_TO_CHECK)) {
     try {
       const items = await fetchProgramListItems(source);
-      const freshItem = items.find(n => !seenLinks.has(n.url));
+      // 이미 접수기간이 지난 글은 관리자 승인 큐에 올릴 필요가 없으므로 건너뜁니다.
+      const freshItem = items.find(n => !seenLinks.has(n.url) && (!n.deadlineDate || n.deadlineDate >= todayKST));
       if (!freshItem) continue;
 
       // 전용 신청 게시판에서 긁어온 글이라 이미 "진짜 프로그램"임이 보장되므로,
