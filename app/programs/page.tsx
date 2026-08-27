@@ -158,7 +158,7 @@ export default function ProgramsPage() {
             </div>
 
             <div className="bg-white p-6 rounded-3xl shadow-md border border-emerald-100">
-              <h3 className="font-bold text-xl mb-4">📋 모집 중인 프로그램 목록</h3>
+              <h3 className="font-bold text-xl mb-4">📋 모집중인 부산지역 청소년 프로그램</h3>
               {loading ? (
                 <div className="text-center py-8 text-gray-400 font-bold text-sm">불러오는 중...</div>
               ) : approvedPrograms.length === 0 ? (

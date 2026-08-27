@@ -263,7 +263,7 @@ export default function Home() {
           {openPrograms.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3 border-b-2 border-emerald-700 pb-2">
-                <h3 className="font-serif font-bold text-gray-900 text-sm">📅 모집 중인 프로그램</h3>
+                <h3 className="font-serif font-bold text-gray-900 text-sm">📅 모집중인 부산지역 청소년 프로그램</h3>
                 <a href="/programs" className="text-xs font-bold text-emerald-700 hover:underline whitespace-nowrap">지도 보기 →</a>
               </div>
               <ul className="space-y-3">

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { programSources } from '@/lib/programSources';
-import { fetchGalleryNotices } from '@/lib/galleryScraper';
-import { extractProgramFromPost } from '@/lib/programScraper';
+import { fetchProgramListItems, extractCardProgramDetail } from '@/lib/programScraper';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 // generate-draft 크론과 동일한 이유로, 호출 1번에 프로그램 1개만 저장합니다.
@@ -25,27 +24,28 @@ export async function GET(req: Request) {
 
   for (const source of shuffledSources.slice(0, MAX_SOURCES_TO_CHECK)) {
     try {
-      const notices = await fetchGalleryNotices(source);
-      const freshNotice = notices.find(n => !seenLinks.has(n.url));
-      if (!freshNotice) continue;
+      const items = await fetchProgramListItems(source);
+      const freshItem = items.find(n => !seenLinks.has(n.url));
+      if (!freshItem) continue;
 
-      const extracted = await extractProgramFromPost(source, freshNotice.url, freshNotice.title);
+      // 전용 신청 게시판에서 긁어온 글이라 이미 "진짜 프로그램"임이 보장되므로,
+      // 공지사항 게시판과 달리 AI에게 프로그램 여부를 판단시킬 필요가 없습니다.
+      const detail = source.boardType === 'card'
+        ? await extractCardProgramDetail(source, freshItem.url, freshItem.title)
+        : { targetAudience: '', contact: '', summary: '' };
 
-      // 신청/모집 공고가 아니면 그냥 "확인함" 처리만 하고 다음 호출로 넘어갑니다.
-      // (저장은 안 하되, seenLinks에는 없으므로 다음 실행에서 같은 글을 또 분석하지 않도록
-      //  거절된 글도 approved:false, isProgram:false 상태로 남겨서 재분석을 막습니다.)
       const { error } = await supabaseAdmin.from('programs').insert([{
         source_id: source.id,
         institution_name: source.name,
-        is_program: extracted.isProgram,
-        program_name: extracted.programName,
-        target_audience: extracted.targetAudience,
-        period: extracted.period,
-        deadline: extracted.deadline,
-        deadline_date: extracted.deadlineDate,
-        contact: extracted.contact,
-        summary: extracted.summary,
-        original_link: freshNotice.url,
+        is_program: true,
+        program_name: freshItem.title,
+        target_audience: detail.targetAudience,
+        period: freshItem.period,
+        deadline: freshItem.deadlineDate ? `${freshItem.deadlineDate}까지` : freshItem.period,
+        deadline_date: freshItem.deadlineDate,
+        contact: detail.contact,
+        summary: detail.summary,
+        original_link: freshItem.url,
         lat: source.lat,
         lng: source.lng,
         address: source.address,
@@ -61,8 +61,7 @@ export async function GET(req: Request) {
         scanned: true,
         sourceId: source.id,
         sourceName: source.name,
-        isProgram: extracted.isProgram,
-        programName: extracted.programName,
+        programName: freshItem.title,
       });
     } catch (err) {
       console.error(`${source.id} 프로그램 스캔 실패:`, err);
