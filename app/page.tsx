@@ -262,10 +262,7 @@ export default function Home() {
           </div>
           {openPrograms.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-3 border-b-2 border-emerald-700 pb-2">
-                <h3 className="font-serif font-bold text-gray-900 text-sm">📅 모집중인 부산지역 청소년 프로그램</h3>
-                <a href="/programs" className="text-xs font-bold text-emerald-700 hover:underline whitespace-nowrap">지도 보기 →</a>
-              </div>
+              <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-emerald-700 pb-2 leading-snug">📅 모집중인 부산지역 청소년 프로그램</h3>
               <ul className="space-y-3">
                 {openPrograms.map(p => (
                   <li key={p.id}>
@@ -277,6 +274,7 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
+              <a href="/programs" className="block text-right text-xs font-bold text-emerald-700 hover:underline mt-3">지도에서 전체 보기 →</a>
             </div>
           )}
         </aside>

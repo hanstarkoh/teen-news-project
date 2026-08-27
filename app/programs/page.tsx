@@ -65,6 +65,11 @@ export default function ProgramsPage() {
       return b.created_at.localeCompare(a.created_at);
     });
   const pendingPrograms = programs.filter(p => !p.approved && p.is_program);
+  // 승인은 했지만 접수기간이 지나서 공개 목록에서 자동으로 숨겨진 것들.
+  // 삭제하지 않고 보관만 하므로, 정리하고 싶은 관리자를 위해 여기서 볼 수 있게 합니다.
+  const expiredPrograms = programs
+    .filter(p => p.approved && p.is_program && p.deadline_date && p.deadline_date < todayKST)
+    .sort((a, b) => (b.deadline_date || '').localeCompare(a.deadline_date || ''));
 
   const handleApprove = async (id: number) => {
     await supabase.from('programs').update({ approved: true }).eq('id', id);
@@ -76,6 +81,11 @@ export default function ProgramsPage() {
       await supabase.from('programs').delete().eq('id', id);
       fetchPrograms();
     }
+  };
+
+  const handleDeleteExpired = async (id: number) => {
+    await supabase.from('programs').delete().eq('id', id);
+    fetchPrograms();
   };
 
   useEffect(() => {
@@ -221,6 +231,25 @@ export default function ProgramsPage() {
                         <button onClick={() => handleApprove(p.id)} className="flex-1 bg-emerald-600 text-white text-sm font-bold py-2 rounded-xl hover:bg-emerald-700">승인</button>
                         <button onClick={() => handleReject(p.id)} className="flex-1 bg-red-100 text-red-600 text-sm font-bold py-2 rounded-xl hover:bg-red-200">삭제</button>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isAdmin && expiredPrograms.length > 0 && (
+              <div className="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                <h3 className="font-bold text-lg mb-1 text-gray-500">📁 마감된 프로그램 ({expiredPrograms.length})</h3>
+                <p className="text-xs text-gray-400 mb-4">접수기간이 지나 공개 목록에서는 자동으로 숨겨졌어요. 삭제하지 않아도 되고, 정리하고 싶은 것만 지우면 됩니다.</p>
+                <div className="space-y-2">
+                  {expiredPrograms.map(p => (
+                    <div key={p.id} className="flex items-center justify-between gap-3 border border-gray-100 rounded-xl p-3">
+                      <div className="min-w-0">
+                        <div className="text-xs text-gray-400 font-bold">{p.institution_name}</div>
+                        <div className="text-sm font-bold text-gray-700 truncate">{p.program_name}</div>
+                        <div className="text-xs text-gray-400">마감 {p.deadline_date}</div>
+                      </div>
+                      <button onClick={() => handleDeleteExpired(p.id)} className="flex-shrink-0 bg-red-100 text-red-600 text-xs font-bold px-3 py-2 rounded-xl hover:bg-red-200">삭제</button>
                     </div>
                   ))}
                 </div>
