@@ -19,6 +19,7 @@ type Program = {
   target_audience: string;
   period: string;
   deadline: string;
+  deadline_date: string | null;
   contact: string;
   summary: string;
   original_link: string;
@@ -51,8 +52,18 @@ export default function ProgramsPage() {
     setLoading(false);
   };
 
-  // 프로그램/모집 공고가 맞고, 관리자가 승인한 것만 공개로 보여줍니다.
-  const approvedPrograms = programs.filter(p => p.approved && p.is_program);
+  const todayKST = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+
+  // 프로그램/모집 공고가 맞고, 관리자가 승인했고, 마감일이 지나지 않은 것만 공개로 보여줍니다.
+  // 마감이 지난 프로그램은 삭제하지 않고 목록에서만 숨깁니다 (AI가 날짜를 잘못 읽었을 때를 대비).
+  const approvedPrograms = programs
+    .filter(p => p.approved && p.is_program && (!p.deadline_date || p.deadline_date >= todayKST))
+    .sort((a, b) => {
+      if (a.deadline_date && b.deadline_date) return a.deadline_date.localeCompare(b.deadline_date);
+      if (a.deadline_date) return -1;
+      if (b.deadline_date) return 1;
+      return b.created_at.localeCompare(a.created_at);
+    });
   const pendingPrograms = programs.filter(p => !p.approved && p.is_program);
 
   const handleApprove = async (id: number) => {

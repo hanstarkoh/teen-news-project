@@ -8,6 +8,7 @@ export default function Home() {
   const [articles, setArticles] = useState<any[]>([]);
   const [ads, setAds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openPrograms, setOpenPrograms] = useState<any[]>([]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
@@ -39,9 +40,27 @@ export default function Home() {
     checkLogin();
 
     fetchData();
+    fetchOpenPrograms();
     window.addEventListener('storage', checkLogin);
     return () => window.removeEventListener('storage', checkLogin);
   }, []);
+
+  const fetchOpenPrograms = async () => {
+    const { data } = await supabase.from('programs').select('*').eq('approved', true).eq('is_program', true);
+    if (!data) return;
+
+    const todayKST = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+    const open = data
+      .filter((p: any) => !p.deadline_date || p.deadline_date >= todayKST)
+      .sort((a: any, b: any) => {
+        if (a.deadline_date && b.deadline_date) return a.deadline_date.localeCompare(b.deadline_date);
+        if (a.deadline_date) return -1;
+        if (b.deadline_date) return 1;
+        return b.created_at.localeCompare(a.created_at);
+      })
+      .slice(0, 4);
+    setOpenPrograms(open);
+  };
 
   const fetchPendingRequests = async () => {
     const { count } = await supabase.from('requests').select('id', { count: 'exact', head: true });
@@ -241,6 +260,25 @@ export default function Home() {
               <button onClick={() => {setStartDate(''); setEndDate('');}} className="mt-2 text-xs text-gray-500 hover:text-gray-900 underline text-right">초기화</button>
             </div>
           </div>
+          {openPrograms.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3 border-b-2 border-emerald-700 pb-2">
+                <h3 className="font-serif font-bold text-gray-900 text-sm">📅 모집 중인 프로그램</h3>
+                <a href="/programs" className="text-xs font-bold text-emerald-700 hover:underline whitespace-nowrap">지도 보기 →</a>
+              </div>
+              <ul className="space-y-3">
+                {openPrograms.map(p => (
+                  <li key={p.id}>
+                    <a href="/programs" className="block group">
+                      <div className="text-xs font-bold text-emerald-700">{p.institution_name}</div>
+                      <div className="text-sm font-bold text-gray-900 leading-snug line-clamp-2 group-hover:underline">{p.program_name}</div>
+                      <div className="text-xs text-gray-400">{p.deadline_date ? `마감 ${p.deadline}` : '상시모집'}</div>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </aside>
 
         <section className="w-full md:w-2/4 flex flex-col">

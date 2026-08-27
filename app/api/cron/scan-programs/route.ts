@@ -42,6 +42,7 @@ export async function GET(req: Request) {
         target_audience: extracted.targetAudience,
         period: extracted.period,
         deadline: extracted.deadline,
+        deadline_date: extracted.deadlineDate,
         contact: extracted.contact,
         summary: extracted.summary,
         original_link: freshNotice.url,
