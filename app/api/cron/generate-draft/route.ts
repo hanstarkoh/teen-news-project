@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { gallerySources } from '@/lib/gallerySources';
 import { fetchGalleryNotices, generateArticleFromPost } from '@/lib/galleryScraper';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 // Vercel Hobby 플랜의 서버리스 함수 제한 시간(60초) 안에 끝나야 해서,
 // 이 라우트는 매 호출마다 딱 1개의 초안만 만듭니다.
@@ -18,6 +18,8 @@ export async function GET(req: Request) {
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabaseAdmin = getSupabaseAdmin();
 
   const [{ data: publishedArticles }, { data: existingDrafts }] = await Promise.all([
     supabaseAdmin.from('articles').select('original_link'),

@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { GallerySource } from '@/lib/gallerySources';
 import { scrapeFetch, scrapeText } from '@/lib/scrapeFetch';
 import { blurFacesUrl } from '@/lib/cloudinary';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export type GalleryNotice = { title: string; url: string };
 
@@ -59,7 +59,8 @@ async function resolveBlurSourceUrl(buffer: Buffer, imageUrl: string): Promise<s
       .toBuffer();
 
     const filePath = `gallery_resized/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-    const { error: uploadError } = await supabaseAdmin.storage.from('images').upload(filePath, resizedBuffer, {
+    const admin = getSupabaseAdmin();
+    const { error: uploadError } = await admin.storage.from('images').upload(filePath, resizedBuffer, {
       contentType: 'image/jpeg',
     });
 
@@ -67,7 +68,7 @@ async function resolveBlurSourceUrl(buffer: Buffer, imageUrl: string): Promise<s
       console.error('리사이즈 이미지 업로드 실패:', uploadError);
       return '';
     }
-    return supabaseAdmin.storage.from('images').getPublicUrl(filePath).data.publicUrl;
+    return admin.storage.from('images').getPublicUrl(filePath).data.publicUrl;
   } catch (resizeError) {
     console.error('이미지 축소 실패:', resizeError);
     return '';
