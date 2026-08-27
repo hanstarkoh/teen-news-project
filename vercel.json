@@ -27,6 +27,18 @@
     {
       "path": "/api/cron/generate-draft",
       "schedule": "58 21 * * *"
+    },
+    {
+      "path": "/api/cron/scan-programs",
+      "schedule": "40 21 * * *"
+    },
+    {
+      "path": "/api/cron/scan-programs",
+      "schedule": "42 21 * * *"
+    },
+    {
+      "path": "/api/cron/scan-programs",
+      "schedule": "44 21 * * *"
     }
   ]
 }

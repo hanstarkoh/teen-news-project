@@ -23,6 +23,7 @@ export default function Home() {
   const [isScraping, setIsScraping] = useState(false);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [pendingAutoDrafts, setPendingAutoDrafts] = useState(0);
+  const [pendingPrograms, setPendingPrograms] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function Home() {
       if (admin) {
         fetchPendingRequests();
         fetchPendingAutoDrafts();
+        fetchPendingPrograms();
       }
     };
     checkLogin();
@@ -49,6 +51,11 @@ export default function Home() {
   const fetchPendingAutoDrafts = async () => {
     const { count } = await supabase.from('draft_articles').select('id', { count: 'exact', head: true }).eq('status', 'pending');
     setPendingAutoDrafts(count || 0);
+  };
+
+  const fetchPendingPrograms = async () => {
+    const { count } = await supabase.from('programs').select('id', { count: 'exact', head: true }).eq('approved', false).eq('is_program', true);
+    setPendingPrograms(count || 0);
   };
 
   useEffect(() => {
@@ -152,6 +159,12 @@ export default function Home() {
           <span className="hidden sm:inline whitespace-nowrap">{today}</span>
           <div className="flex items-center gap-4 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden">
             <a href="/hotplace" className="hover:text-white transition">핫플 지도</a>
+            <a href="/programs" className="hover:text-white transition flex items-center gap-1">
+              프로그램 지도
+              {isAdmin && pendingPrograms > 0 && (
+                <span className="bg-emerald-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingPrograms > 9 ? '9+' : pendingPrograms}</span>
+              )}
+            </a>
             <a href="/bamboo" className="hover:text-white transition">대나무숲</a>
             <a href="/request" className="hover:text-white transition">기사 제보</a>
             {isAdmin ? (
