@@ -262,7 +262,7 @@ export default function Home() {
           </div>
           {openPrograms.length > 0 && (
             <div>
-              <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-emerald-700 pb-2 leading-snug">📅 모집중인 부산지역 청소년 프로그램</h3>
+              <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-emerald-700 pb-2 whitespace-nowrap">📅 모집중인 프로그램</h3>
               <ul className="space-y-3">
                 {openPrograms.map(p => (
                   <li key={p.id}>
