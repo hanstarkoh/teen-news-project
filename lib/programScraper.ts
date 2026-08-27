@@ -7,11 +7,22 @@ export type ProgramListItem = {
   url: string;
   period: string;
   deadlineDate: string | null;
+  // onclick 계열 게시판은 목록 자체에 대상/마감상태가 이미 나와있어서
+  // AI 상세 추출 없이 이 값들을 바로 씁니다.
+  targetAudience?: string;
+  closed?: boolean;
 };
 
 function parseEndDate(rangeText: string): string | null {
-  const match = rangeText.match(/(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})/);
-  return match ? match[2] : null;
+  const match = rangeText.match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})\.?\s*(?:\d{1,2}시)?\s*~\s*(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/);
+  if (!match) return null;
+  const [, , , , y2, m2, d2] = match;
+  return `${y2}-${m2.padStart(2, '0')}-${d2.padStart(2, '0')}`;
+}
+
+function extractLabelValue(text: string, label: string): string {
+  const match = text.match(new RegExp(`${label}\\s*[:：]\\s*([\\s\\S]{1,60}?)(?=\\n|·|접수현황|대기현황|장소|접\\s*수|일\\s*시|$)`));
+  return match ? match[1].replace(/\s+/g, ' ').trim() : '';
 }
 
 // 'card' 타입 게시판(카드 목록 + 상세페이지)에서 프로그램 목록을 긁어옵니다.
@@ -68,8 +79,87 @@ async function fetchTableBoardItems(source: ProgramSource): Promise<ProgramListI
   return items;
 }
 
+function isClosedStatus(text: string): boolean {
+  return /마감|종료/.test(text) && !/마감임박/.test(text);
+}
+
+// 'onclick-table' 타입 게시판(가야/금곡): 옛날 방식 <table>에 <td onclick="location.href='...'">로
+// 상세페이지 이동. 대상·접수기간이 목록 행 안에 이미 텍스트로 있어서 상세페이지를 따로 볼 필요가 없습니다.
+async function fetchOnclickTableItems(source: ProgramSource): Promise<ProgramListItem[]> {
+  const html = await scrapeText(source.listUrl);
+  const $ = cheerio.load(html);
+  const items: ProgramListItem[] = [];
+
+  $('tr').each((_, el) => {
+    const $row = $(el);
+    const $onclickEl = $row.find('[onclick*="pidx="]').first();
+    if ($onclickEl.length === 0) return;
+
+    const onclick = $onclickEl.attr('onclick') || '';
+    const hrefMatch = onclick.match(/location\.href='([^']+)'/);
+    if (!hrefMatch) return;
+
+    const $tds = $row.find('td');
+    const title = $tds.eq(0).text().replace(/\s+/g, ' ').trim().split(/\s*-\s*대상/)[0].trim();
+    const rowText = $row.text();
+    const period = $tds.eq(2).text().replace(/\s+/g, ' ').trim();
+    if (!title || !period) return;
+
+    items.push({
+      title,
+      url: new URL(hrefMatch[1], source.listUrl).href,
+      period,
+      deadlineDate: parseEndDate(period),
+      targetAudience: extractLabelValue(rowText, '대\\s*상'),
+      closed: isClosedStatus($tds.last().text()),
+    });
+  });
+
+  return items;
+}
+
+// 'onclick-card' 타입 게시판(사상/사하/중구): onclick 카드형, 목록 안에 대상/접수기간이 이미 다 있어서
+// 상세페이지가 필요 없는 형태.
+async function fetchOnclickCardItems(source: ProgramSource): Promise<ProgramListItem[]> {
+  const html = await scrapeText(source.listUrl);
+  const $ = cheerio.load(html);
+  const items: ProgramListItem[] = [];
+
+  $('[onclick*="pidx="]').each((_, el) => {
+    const $item = $(el);
+    // 카드 안에 onclick이 중복으로(제목 영역+상태뱃지) 걸려있는 경우가 있어,
+    // 바깥쪽(카드 전체) onclick 요소만 취급하고 안쪽 것은 건너뜁니다.
+    if ($item.parents('[onclick*="pidx="]').length > 0) return;
+
+    const onclick = $item.attr('onclick') || '';
+    const hrefMatch = onclick.match(/location\.href='([^']+)'/);
+    if (!hrefMatch) return;
+
+    const title = $item.find('td').first().text().replace(/\s+/g, ' ').trim();
+    const itemText = $item.text();
+    const period = extractLabelValue(itemText, '접\\s*수');
+    if (!title) return;
+
+    items.push({
+      title,
+      url: new URL(hrefMatch[1], source.listUrl).href,
+      period: period || extractLabelValue(itemText, '일\\s*시'),
+      deadlineDate: period ? parseEndDate(period) : null,
+      targetAudience: extractLabelValue(itemText, '대\\s*상'),
+      closed: isClosedStatus(itemText),
+    });
+  });
+
+  return items;
+}
+
 export async function fetchProgramListItems(source: ProgramSource): Promise<ProgramListItem[]> {
-  return source.boardType === 'card' ? fetchCardBoardItems(source) : fetchTableBoardItems(source);
+  switch (source.boardType) {
+    case 'card': return fetchCardBoardItems(source);
+    case 'table': return fetchTableBoardItems(source);
+    case 'onclick-table': return fetchOnclickTableItems(source);
+    case 'onclick-card': return fetchOnclickCardItems(source);
+  }
 }
 
 export type ProgramDetail = {

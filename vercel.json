@@ -39,6 +39,14 @@
     {
       "path": "/api/cron/scan-programs",
       "schedule": "44 21 * * *"
+    },
+    {
+      "path": "/api/cron/scan-programs",
+      "schedule": "46 21 * * *"
+    },
+    {
+      "path": "/api/cron/scan-programs",
+      "schedule": "48 21 * * *"
     }
   ]
 }
