@@ -1,5 +1,4 @@
 import * as cheerio from 'cheerio';
-import sharp from 'sharp';
 import { GallerySource } from '@/lib/gallerySources';
 import { scrapeFetch, scrapeText } from '@/lib/scrapeFetch';
 import { blurFacesUrl } from '@/lib/cloudinary';
@@ -53,6 +52,7 @@ async function resolveBlurSourceUrl(buffer: Buffer, imageUrl: string): Promise<s
   if (buffer.length <= CLOUDINARY_FETCH_LIMIT) return imageUrl;
 
   try {
+    const { default: sharp } = await import('sharp');
     const resizedBuffer = await sharp(buffer)
       .resize({ width: 1600, withoutEnlargement: true })
       .jpeg({ quality: 80 })
