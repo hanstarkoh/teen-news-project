@@ -242,6 +242,14 @@ export default function ArticleClient() {
                 {sourceName && (
                   <p className="text-xs text-gray-400 mt-2">사진·내용 출처: {sourceName}</p>
                 )}
+                {article.thumbnail_url?.includes('/e_blur:') && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    ⚠️ 사진 속 인물의 얼굴이 자동으로 인식되지 않아 사진 전체를 흐리게 처리했습니다.
+                    {article.original_link && (
+                      <> 자세한 사진은 <a href={article.original_link} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">원문</a>에서 확인해주세요.</>
+                    )}
+                  </p>
+                )}
               </div>
 
               <article className="text-gray-800 text-lg leading-loose whitespace-pre-wrap break-words">
