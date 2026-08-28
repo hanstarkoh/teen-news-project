@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio';
 import { GallerySource } from '@/lib/gallerySources';
 import { scrapeFetch, scrapeText } from '@/lib/scrapeFetch';
-import { blurFacesUrl } from '@/lib/cloudinary';
+import { resolveSafeBlurredUrl } from '@/lib/cloudinary';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export type GalleryNotice = { title: string; url: string };
@@ -168,6 +168,6 @@ export async function generateArticleFromPost(
   return {
     title: titleMatch ? stripStrayAsterisks(titleMatch[1]) : (listTitle || '제목 없음'),
     content: contentMatch ? stripStrayAsterisks(contentMatch[1]) : aiText,
-    sourceImage: blurSourceUrl ? blurFacesUrl(blurSourceUrl) : '',
+    sourceImage: blurSourceUrl ? await resolveSafeBlurredUrl(blurSourceUrl) : '',
   };
 }
