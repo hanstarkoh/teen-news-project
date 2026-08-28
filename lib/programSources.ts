@@ -5,7 +5,19 @@
 //  - 'table': 표 형태로 제목/접수기간/신청링크가 한 줄에 다 나오는 형태 (상세페이지 없음)
 //  - 'onclick-table': 옛날 방식 <table>에 onclick="location.href='...'"으로 상세 이동 (가야/금곡 계열)
 //  - 'onclick-card': onclick 카드형, 목록 안에 대상/접수기간이 이미 다 나와있어 상세페이지가 필요 없는 형태 (사상/사하/중구 계열)
-export type ProgramBoardType = 'card' | 'table' | 'onclick-table' | 'onclick-card';
+//  - 'card-status': 카드형인데 마감여부가 텍스트가 아니라 카드 자체의 클래스로만 표시되는 형태 (동래)
+//  - 'reservation-portal': 부산시 통합예약 포털(reserve.busan.go.kr), dt/dd 라벨로 정보가 잘 정리되어 있는 형태 (금련산)
+//  - 'json-api': 목록이 정적 HTML이 아니라 JSON API로만 내려오는 형태 (전포)
+//  - 'gu-reservation-portal': 구청 예약 포털인데 다른 시설과 게시판을 같이 써서 장소명으로 걸러내야 하는 형태 (해운대구)
+export type ProgramBoardType =
+  | 'card'
+  | 'table'
+  | 'onclick-table'
+  | 'onclick-card'
+  | 'card-status'
+  | 'reservation-portal'
+  | 'json-api'
+  | 'gu-reservation-portal';
 
 export type ProgramSource = {
   id: string;
@@ -15,6 +27,9 @@ export type ProgramSource = {
   address: string;
   boardType: ProgramBoardType;
   listUrl: string;
+  // 'gu-reservation-portal' 전용: 다른 시설과 같이 쓰는 게시판이라, "교육장소"에 이 문구가
+  // 포함된 항목만 이 기관 것으로 인정합니다.
+  facilityFilter?: string;
 };
 
 export const programSources: ProgramSource[] = [
@@ -98,5 +113,42 @@ export const programSources: ProgramSource[] = [
     address: '부산광역시 중구 보수대로 124번길 24-2',
     lat: 35.1055952,
     lng: 129.0232611,
+  },
+  {
+    id: 'dongnae',
+    name: '동래구청소년센터',
+    boardType: 'card-status',
+    listUrl: 'https://www.onnainna.kr/reservation/program',
+    address: '부산광역시 동래구 문화로 90',
+    lat: 35.2109726,
+    lng: 129.0872833,
+  },
+  {
+    id: 'geumnyeonsan',
+    name: '금련산청소년수련원',
+    boardType: 'reservation-portal',
+    listUrl: 'https://reserve.busan.go.kr/lctre/list.do?srchResveInsttCd=1',
+    address: '부산광역시 수영구 금련산로 60',
+    lat: 35.1477065,
+    lng: 129.1102640,
+  },
+  {
+    id: 'jeonpo',
+    name: '전포청소년센터',
+    boardType: 'json-api',
+    listUrl: 'https://www.jinguzzang.com/proc/get_program_list.php',
+    address: '부산광역시 부산진구 진남로 328번길 62',
+    lat: 35.1571586,
+    lng: 129.0757233,
+  },
+  {
+    id: 'haeundae_gu',
+    name: '해운대청소년문화의집',
+    boardType: 'gu-reservation-portal',
+    listUrl: 'https://www.haeundae.go.kr/index.do?menuCd=DOM_000001304001000000',
+    facilityFilter: '해운대청소년문화의집',
+    address: '부산광역시 해운대구 반송순환로 135',
+    lat: 35.2230888,
+    lng: 129.1528249,
   },
 ];

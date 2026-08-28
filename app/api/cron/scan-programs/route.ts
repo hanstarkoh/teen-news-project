@@ -7,7 +7,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 // (Vercel Hobby 60초 제한 + vercel.json에 시간을 띄워 여러 번 등록)
 export const maxDuration = 60;
 
-const MAX_SOURCES_TO_CHECK = 9;
+const MAX_SOURCES_TO_CHECK = 13;
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization');

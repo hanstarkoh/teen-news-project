@@ -14,7 +14,8 @@ export type ProgramListItem = {
 };
 
 function parseEndDate(rangeText: string): string | null {
-  const match = rangeText.match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})\.?\s*(?:\d{1,2}시)?\s*~\s*(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/);
+  // 날짜 뒤에 시각("15:00", "18시" 등)이 붙는 경우까지 넉넉하게 허용합니다.
+  const match = rangeText.match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})[\s\S]{0,20}?~[\s\S]{0,10}?(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/);
   if (!match) return null;
   const [, , , , y2, m2, d2] = match;
   return `${y2}-${m2.padStart(2, '0')}-${d2.padStart(2, '0')}`;
@@ -153,12 +154,145 @@ async function fetchOnclickCardItems(source: ProgramSource): Promise<ProgramList
   return items;
 }
 
+// 'card-status' 타입 게시판(동래): 카드형인데 마감여부가 텍스트가 아니라
+// 카드 div의 클래스(program_accepting/program_close)로만 표시됩니다.
+async function fetchCardStatusItems(source: ProgramSource): Promise<ProgramListItem[]> {
+  const html = await scrapeText(source.listUrl);
+  const $ = cheerio.load(html);
+  const items: ProgramListItem[] = [];
+
+  $('.program_list > li > a').each((_, el) => {
+    const $link = $(el);
+    const href = $link.attr('href');
+    const title = $link.find('.card-title').first().text().replace(/\s+/g, ' ').trim();
+    if (!href || !title) return;
+
+    const itemText = $link.text();
+    const period = extractLabelValue(itemText, '접수\\s*기간');
+    const closed = $link.find('.card').hasClass('program_close');
+
+    items.push({
+      title,
+      url: new URL(href, source.listUrl).href,
+      period,
+      deadlineDate: period ? parseEndDate(period) : null,
+      closed,
+    });
+  });
+
+  return items;
+}
+
+// 'reservation-portal' 타입(금련산): 부산시 통합예약 포털. dt/dd 라벨로 정보가 잘 정리돼 있습니다.
+async function fetchReservationPortalItems(source: ProgramSource): Promise<ProgramListItem[]> {
+  const html = await scrapeText(source.listUrl);
+  const $ = cheerio.load(html);
+  const items: ProgramListItem[] = [];
+
+  $('a.reserveItem').each((_, el) => {
+    const $item = $(el);
+    const onclick = $item.attr('onclick') || '';
+    const idMatch = onclick.match(/fn_viewProgrm\('(\d+)',\s*'(\d+)'\)/);
+    const title = $item.find('.infoBox p.tit').first().text().replace(/\s+/g, ' ').trim();
+    if (!idMatch || !title) return;
+
+    const getDd = (label: string) => {
+      const $dt = $item.find('dl > dt').filter((_, dt) => $(dt).text().trim() === label).first();
+      return $dt.next('dd').text().replace(/\s+/g, ' ').trim();
+    };
+
+    const dateText = $item.find('dl dd.date').text();
+    // [신청] 기간을 우선 찾고, 없으면 전체 텍스트에서 첫 날짜범위를 씁니다.
+    const applyRangeMatch = dateText.match(/\[신청\]\s*([\s\S]*?)(?=\[|$)/);
+    const period = (applyRangeMatch ? applyRangeMatch[1] : dateText).replace(/\s+/g, ' ').trim();
+
+    const statusText = $item.find('.infoBox span.statusMark').first().text().trim();
+
+    items.push({
+      title,
+      url: `https://reserve.busan.go.kr/lctre/view?resveGroupSn=${idMatch[1]}&progrmSn=${idMatch[2]}`,
+      period,
+      deadlineDate: parseEndDate(period),
+      targetAudience: getDd('대상'),
+      closed: isClosedStatus(statusText),
+    });
+  });
+
+  return items;
+}
+
+// 'json-api' 타입(전포): 목록이 정적 HTML이 아니라 JSON API로만 내려옵니다.
+async function fetchJsonApiItems(source: ProgramSource): Promise<ProgramListItem[]> {
+  const res = await fetch(source.listUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    },
+    body: 'filter=all&sort=desc',
+  });
+  const data = await res.json();
+  const rows: any[] = Array.isArray(data?.data) ? data.data : [];
+
+  return rows.map((row) => {
+    const period: string = row.spt_application_date || '';
+    return {
+      title: String(row.spt_title || '').trim(),
+      // 프로그램별 별도 상세페이지가 없어서, 목록 페이지 주소 + 고유번호로 식별합니다.
+      url: `https://www.jinguzzang.com/application#${row.spt_idx}`,
+      period,
+      deadlineDate: parseEndDate(period),
+      targetAudience: String(row.spt_target || '').trim(),
+      closed: Number(row.spt_status) === 2,
+    };
+  }).filter(item => item.title);
+}
+
+// 'gu-reservation-portal' 타입(해운대구): 구청 예약 포털인데 다른 시설과 게시판을 같이 써서
+// "교육장소"에 이 기관 이름이 포함된 항목만 걸러냅니다.
+async function fetchGuReservationPortalItems(source: ProgramSource): Promise<ProgramListItem[]> {
+  const html = await scrapeText(source.listUrl);
+  const $ = cheerio.load(html);
+  const items: ProgramListItem[] = [];
+
+  $('.reserVbox').each((_, el) => {
+    const $item = $(el);
+    const itemText = $item.text();
+    if (source.facilityFilter && !itemText.includes(source.facilityFilter)) return;
+
+    const $link = $item.find('.base a').first();
+    const href = $link.attr('href');
+    const title = $link.find('strong.title').first().text().replace(/\s+/g, ' ').trim();
+    if (!href || !title) return;
+
+    // 날짜 안에 줄바꿈이 많이 섞여있어서(날짜/시각이 따로따로 줄바뀜), 정규식보다
+    // "신청기간" li 자체를 찾아 그 안 텍스트를 통째로 공백 정리하는 편이 안전합니다.
+    const periodLi = $link.find('ul li').filter((_, li) => $(li).text().includes('신청기간')).first();
+    const period = periodLi.text().replace(/\s+/g, ' ').trim().replace(/^신청기간\s*:\s*/, '');
+    const statusText = $item.find('.btn_reserv a[href*="res_no="] span.head').first().text().trim();
+
+    items.push({
+      title,
+      url: new URL(href, source.listUrl).href,
+      period,
+      deadlineDate: parseEndDate(period),
+      closed: isClosedStatus(statusText),
+    });
+  });
+
+  return items;
+}
+
 export async function fetchProgramListItems(source: ProgramSource): Promise<ProgramListItem[]> {
   switch (source.boardType) {
     case 'card': return fetchCardBoardItems(source);
     case 'table': return fetchTableBoardItems(source);
     case 'onclick-table': return fetchOnclickTableItems(source);
     case 'onclick-card': return fetchOnclickCardItems(source);
+    case 'card-status': return fetchCardStatusItems(source);
+    case 'reservation-portal': return fetchReservationPortalItems(source);
+    case 'json-api': return fetchJsonApiItems(source);
+    case 'gu-reservation-portal': return fetchGuReservationPortalItems(source);
   }
 }
 
