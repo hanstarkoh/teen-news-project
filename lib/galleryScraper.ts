@@ -44,33 +44,42 @@ export async function fetchGalleryNotices(source: GallerySource): Promise<Galler
 
 export type GeneratedDraft = { title: string; content: string; sourceImage: string };
 
-// Cloudinary 무료 플랜의 fetch 용량 한도(10MB)를 넘는 사진은 블러 처리가 실패하므로,
-// sharp로 줄여서 Supabase Storage에 올린 뒤 그 축소본을 블러 처리합니다.
+// Cloudinary 무료 플랜의 fetch 용량 한도(10MB)를 넘는 사진은 블러 처리가 실패하므로 줄여야 합니다.
 const CLOUDINARY_FETCH_LIMIT = 9_000_000;
 
-async function resolveBlurSourceUrl(buffer: Buffer, imageUrl: string): Promise<string> {
-  if (buffer.length <= CLOUDINARY_FETCH_LIMIT) return imageUrl;
-
+// Cloudinary가 원본 기관 서버에서 직접 사진을 가져가게 하면, 그 서버가 느릴 때
+// (예: 가야청소년센터) 90초 안에 못 받아와서 블러 처리가 통째로 실패합니다.
+// 그래서 항상 우리가 먼저 사진을 받아 Supabase Storage에 올려두고, Cloudinary는
+// 우리 저장소(항상 빠름)에서만 가져가게 합니다. 용량이 크면 sharp로 줄이기까지 합니다.
+async function resolveBlurSourceUrl(buffer: Buffer, mimeType: string): Promise<string> {
   try {
-    const { default: sharp } = await import('sharp');
-    const resizedBuffer = await sharp(buffer)
-      .resize({ width: 1600, withoutEnlargement: true })
-      .jpeg({ quality: 80 })
-      .toBuffer();
+    let uploadBuffer = buffer;
+    let contentType = mimeType;
+    let ext = mimeType.split(';')[0].split('/')[1]?.split('+')[0] || 'jpg';
 
-    const filePath = `gallery_resized/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+    if (buffer.length > CLOUDINARY_FETCH_LIMIT) {
+      const { default: sharp } = await import('sharp');
+      uploadBuffer = await sharp(buffer)
+        .resize({ width: 1600, withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      contentType = 'image/jpeg';
+      ext = 'jpg';
+    }
+
+    const filePath = `gallery_proxy/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
     const admin = getSupabaseAdmin();
-    const { error: uploadError } = await admin.storage.from('images').upload(filePath, resizedBuffer, {
-      contentType: 'image/jpeg',
+    const { error: uploadError } = await admin.storage.from('images').upload(filePath, uploadBuffer, {
+      contentType,
     });
 
     if (uploadError) {
-      console.error('리사이즈 이미지 업로드 실패:', uploadError);
+      console.error('사진 업로드 실패:', uploadError);
       return '';
     }
     return admin.storage.from('images').getPublicUrl(filePath).data.publicUrl;
-  } catch (resizeError) {
-    console.error('이미지 축소 실패:', resizeError);
+  } catch (err) {
+    console.error('사진 처리 실패:', err);
     return '';
   }
 }
@@ -106,7 +115,7 @@ export async function generateArticleFromPost(
   const base64Image = buffer.toString('base64');
   const mimeType = imageRes.headers.get('content-type') || 'image/jpeg';
 
-  const blurSourceUrl = await resolveBlurSourceUrl(buffer, imageUrl);
+  const blurSourceUrl = await resolveBlurSourceUrl(buffer, mimeType);
 
   const apiKey = process.env.GEMINI_API_KEY;
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
