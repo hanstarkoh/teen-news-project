@@ -30,11 +30,42 @@ type Program = {
   created_at: string;
 };
 
+// 주소 문자열에서 "OO구"만 뽑아냅니다 (예: "부산광역시 금정구 기찰로..." → "금정구").
+function getDistrict(address: string): string {
+  const match = address.match(/(\S+구)(?=\s|$)/);
+  return match ? match[1] : '기타';
+}
+
+function ProgramCard({ p }: { p: Program }) {
+  return (
+    <a
+      href={p.original_link}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block border border-gray-200 rounded-2xl p-4 hover:border-emerald-300 transition-all"
+    >
+      <div className="flex items-center gap-2 mb-1 flex-wrap">
+        <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-xs font-bold">{p.institution_name}</span>
+        {p.deadline && <span className="text-xs font-bold text-red-500">마감 {p.deadline}</span>}
+      </div>
+      <div className="font-bold text-gray-900">{p.program_name}</div>
+      {p.summary && <p className="text-sm text-gray-600 mt-1">{p.summary}</p>}
+      <div className="text-xs text-gray-400 mt-2 flex gap-3 flex-wrap">
+        {p.target_audience && <span>👤 {p.target_audience}</span>}
+        {p.period && <span>🗓️ {p.period}</span>}
+        {p.contact && <span>☎️ {p.contact}</span>}
+      </div>
+    </a>
+  );
+}
+
 export default function ProgramsPage() {
   const [map, setMap] = useState<any>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [districtFilter, setDistrictFilter] = useState('all');
+  const [selectedInstitution, setSelectedInstitution] = useState<string | null>(null);
 
   const router = useRouter();
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -64,6 +95,29 @@ export default function ProgramsPage() {
       if (b.deadline_date) return 1;
       return b.created_at.localeCompare(a.created_at);
     });
+  const availableDistricts = Array.from(new Set(approvedPrograms.map(p => getDistrict(p.address)))).sort();
+
+  // 지도 위 핀은 "구" 필터만 따르고, 특정 기관 선택 여부와는 무관하게 그대로 보여줍니다
+  // (다른 핀을 바로 또 클릭할 수 있도록).
+  const mapPrograms = approvedPrograms.filter(p => districtFilter === 'all' || getDistrict(p.address) === districtFilter);
+  // 오른쪽 리스트는 구 필터 + 핀으로 고른 기관까지 둘 다 반영합니다.
+  const listPrograms = mapPrograms.filter(p => !selectedInstitution || p.institution_name === selectedInstitution);
+
+  // 기관을 하나도 안 골랐을 땐 기관별로 묶어서 보여줘야 어느 기관 건지 한눈에 들어옵니다.
+  const groupedByInstitution = (() => {
+    const groups = new Map<string, Program[]>();
+    listPrograms.forEach(p => {
+      if (!groups.has(p.institution_name)) groups.set(p.institution_name, []);
+      groups.get(p.institution_name)!.push(p);
+    });
+    return groups;
+  })();
+
+  const handleDistrictChange = (value: string) => {
+    setDistrictFilter(value);
+    setSelectedInstitution(null);
+  };
+
   const pendingPrograms = programs.filter(p => !p.approved && p.is_program);
   // 승인은 했지만 접수기간이 지나서 공개 목록에서 자동으로 숨겨진 것들.
   // 삭제하지 않고 보관만 하므로, 정리하고 싶은 관리자를 위해 여기서 볼 수 있게 합니다.
@@ -125,31 +179,31 @@ export default function ProgramsPage() {
 
     // 같은 기관의 프로그램은 한 지점에 여러 개 있을 수 있어서, 기관별로 묶어 하나의 핀에 표시합니다.
     const grouped = new Map<string, Program[]>();
-    approvedPrograms.forEach(p => {
+    mapPrograms.forEach(p => {
       const key = `${p.lat},${p.lng}`;
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(p);
     });
 
     grouped.forEach((progs) => {
-      const marker = window.L.marker([progs[0].lat, progs[0].lng]).addTo(map);
+      const isSelected = progs[0].institution_name === selectedInstitution;
+      const icon = window.L.divIcon({
+        html: `<div style="width:${isSelected ? 26 : 20}px; height:${isSelected ? 26 : 20}px; border-radius:50%; background:${isSelected ? '#059669' : '#10b981'}; border:3px solid white; box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>`,
+        className: '',
+        iconSize: [isSelected ? 26 : 20, isSelected ? 26 : 20],
+        iconAnchor: [isSelected ? 13 : 10, isSelected ? 13 : 10],
+      });
+      const marker = window.L.marker([progs[0].lat, progs[0].lng], { icon }).addTo(map);
+      marker.bindTooltip(`${progs[0].institution_name} (${progs.length}건)`, { direction: 'top', offset: [0, -10] });
 
-      const popupContent = `
-        <div style="width:220px;">
-          <h4 style="font-weight:bold; color:#065f46; margin-bottom:6px; font-size:13px;">${progs[0].institution_name}</h4>
-          ${progs.map(p => `
-            <div style="border-top:1px solid #e5e7eb; padding-top:6px; margin-top:6px;">
-              <div style="font-weight:bold; font-size:13px; color:#111827;">${p.program_name}</div>
-              <div style="font-size:11px; color:#6b7280; margin-top:2px;">마감: ${p.deadline || '정보 없음'}</div>
-            </div>
-          `).join('')}
-        </div>
-      `;
+      marker.on('click', () => {
+        setSelectedInstitution(progs[0].institution_name);
+        map.panTo([progs[0].lat, progs[0].lng]);
+      });
 
-      marker.bindPopup(popupContent);
       markersRef.current.push(marker);
     });
-  }, [map, programs]);
+  }, [map, mapPrograms, selectedInstitution]);
 
   return (
     <div className="min-h-screen bg-emerald-50 py-10 px-4 text-gray-900">
@@ -163,41 +217,57 @@ export default function ProgramsPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="w-full lg:w-2/3 space-y-6">
             <div className="bg-white p-4 rounded-3xl shadow-md border border-emerald-100">
-              <p className="text-sm font-bold text-emerald-600 mb-4 ml-2">👇 지도 핀을 클릭하면 그 기관의 모집 중인 프로그램을 볼 수 있어요!</p>
-              <div ref={mapContainer} className="w-full h-[420px] rounded-2xl border border-gray-200 z-0 relative"></div>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl shadow-md border border-emerald-100">
-              <h3 className="font-bold text-xl mb-4">📋 모집중인 부산지역 청소년 프로그램</h3>
-              {loading ? (
-                <div className="text-center py-8 text-gray-400 font-bold text-sm">불러오는 중...</div>
-              ) : approvedPrograms.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 font-bold text-sm">아직 등록된 프로그램이 없습니다.</div>
-              ) : (
-                <div className="space-y-3">
-                  {approvedPrograms.map(p => (
-                    <a
-                      key={p.id}
-                      href={p.original_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block border border-gray-200 rounded-2xl p-4 hover:border-emerald-300 transition-all"
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-xs font-bold">{p.institution_name}</span>
-                        {p.deadline && <span className="text-xs font-bold text-red-500">마감 {p.deadline}</span>}
-                      </div>
-                      <div className="font-bold text-gray-900">{p.program_name}</div>
-                      {p.summary && <p className="text-sm text-gray-600 mt-1">{p.summary}</p>}
-                      <div className="text-xs text-gray-400 mt-2 flex gap-3">
-                        {p.target_audience && <span>👤 {p.target_audience}</span>}
-                        {p.period && <span>🗓️ {p.period}</span>}
-                        {p.contact && <span>☎️ {p.contact}</span>}
-                      </div>
-                    </a>
+              <div className="flex flex-wrap items-center gap-3 mb-4 ml-1">
+                <label className="text-sm font-bold text-gray-700">📍 구별 보기</label>
+                <select
+                  value={districtFilter}
+                  onChange={(e) => handleDistrictChange(e.target.value)}
+                  className="border border-gray-300 rounded-lg text-sm font-bold px-3 py-1.5 outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="all">전체 ({approvedPrograms.length})</option>
+                  {availableDistricts.map(d => (
+                    <option key={d} value={d}>{d} ({approvedPrograms.filter(p => getDistrict(p.address) === d).length})</option>
                   ))}
+                </select>
+                {selectedInstitution && (
+                  <button onClick={() => setSelectedInstitution(null)} className="ml-auto text-xs font-bold text-emerald-700 hover:underline whitespace-nowrap">
+                    ← 전체 기관 보기
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-4">
+                <div ref={mapContainer} className="w-full md:w-3/5 h-[500px] rounded-2xl border border-gray-200 z-0 relative flex-shrink-0"></div>
+
+                <div className="w-full md:w-2/5 h-[500px] overflow-y-auto pr-1 space-y-4">
+                  {loading ? (
+                    <div className="text-center py-8 text-gray-400 font-bold text-sm">불러오는 중...</div>
+                  ) : listPrograms.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 font-bold text-sm">
+                      {approvedPrograms.length === 0 ? '아직 등록된 프로그램이 없습니다.' : '이 조건에 맞는 프로그램이 없어요.'}
+                    </div>
+                  ) : selectedInstitution ? (
+                    <div className="space-y-3">
+                      {listPrograms.map(p => <ProgramCard key={p.id} p={p} />)}
+                    </div>
+                  ) : (
+                    Array.from(groupedByInstitution.entries()).map(([name, progs]) => (
+                      <div key={name}>
+                        <button
+                          onClick={() => setSelectedInstitution(name)}
+                          className="sticky top-0 bg-emerald-50/95 backdrop-blur w-full text-left px-2 py-1.5 rounded-lg text-xs font-bold text-emerald-800 mb-2 hover:bg-emerald-100 transition"
+                        >
+                          📍 {name} ({progs.length})
+                        </button>
+                        <div className="space-y-3">
+                          {progs.map(p => <ProgramCard key={p.id} p={p} />)}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-              )}
+              </div>
+              <p className="text-xs text-gray-400 mt-3 ml-1">👇 지도 핀이나 기관 이름을 클릭하면 그 기관 프로그램만 오른쪽에 모아서 볼 수 있어요.</p>
             </div>
           </div>
 
