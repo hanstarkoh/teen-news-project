@@ -4,6 +4,12 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { gallerySources } from '@/lib/gallerySources';
 
+// 얼굴 블러 URL을 사진 전체 블러 URL로 바꿉니다. 얼굴 일부만 인식되고
+// 나머지는 그대로 노출된 사진을 편집자가 직접 눈으로 확인하고 고칠 때 씁니다.
+function toFullBlurUrl(url: string): string {
+  return url.replace('/e_blur_faces:1000/', '/e_blur:1500/');
+}
+
 export default function AIDeskPage() {
   const [sourceId, setSourceId] = useState(gallerySources[0].id);
   const [notices, setNotices] = useState<{title: string, url: string}[]>([]);
@@ -39,6 +45,10 @@ export default function AIDeskPage() {
 
   const updateAutoDraft = (id: number, field: 'title' | 'content', value: string) => {
     setAutoDrafts(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d));
+  };
+
+  const handleFullBlurAutoDraft = (id: number) => {
+    setAutoDrafts(prev => prev.map(d => d.id === id ? { ...d, image_url: toFullBlurUrl(d.image_url) } : d));
   };
 
   const handlePublishAutoDraft = async (draft: any) => {
@@ -147,6 +157,14 @@ export default function AIDeskPage() {
     }));
   };
 
+  const handleFullBlurDraft = (index: number) => {
+    setDrafts(prev => {
+      const target = prev[index];
+      if (!target?.imageUrl) return prev;
+      return { ...prev, [index]: { ...target, imageUrl: toFullBlurUrl(target.imageUrl) } };
+    });
+  };
+
   if (!isAdmin) return null;
 
   return (
@@ -184,12 +202,22 @@ export default function AIDeskPage() {
                   </div>
 
                   {draft.image_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={draft.image_url}
-                      alt="대표 이미지 미리보기"
-                      className="w-full max-h-64 object-cover rounded-xl mb-3 border border-gray-200"
-                    />
+                    <div className="mb-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={draft.image_url}
+                        alt="대표 이미지 미리보기"
+                        className="w-full max-h-64 object-cover rounded-xl border border-gray-200"
+                      />
+                      {draft.image_url.includes('e_blur_faces:1000') && (
+                        <button
+                          onClick={() => handleFullBlurAutoDraft(draft.id)}
+                          className="mt-2 text-xs font-bold text-orange-700 bg-orange-100 px-3 py-1.5 rounded-lg hover:bg-orange-200"
+                        >
+                          🌫️ 얼굴이 덜 가려졌어요 → 사진 전체 블러 처리
+                        </button>
+                      )}
+                    </div>
                   )}
                   <input
                     className="w-full p-3 border border-gray-200 rounded-xl font-bold text-gray-900 mb-3 focus:border-orange-400 outline-none"
@@ -269,12 +297,22 @@ export default function AIDeskPage() {
                       </div>
                       
                       {drafts[index].imageUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={drafts[index].imageUrl}
-                          alt="대표 이미지 미리보기"
-                          className="w-full max-h-64 object-cover rounded-xl mb-3 border border-gray-200"
-                        />
+                        <div className="mb-3">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={drafts[index].imageUrl}
+                            alt="대표 이미지 미리보기"
+                            className="w-full max-h-64 object-cover rounded-xl border border-gray-200"
+                          />
+                          {drafts[index].imageUrl!.includes('e_blur_faces:1000') && (
+                            <button
+                              onClick={() => handleFullBlurDraft(index)}
+                              className="mt-2 text-xs font-bold text-indigo-700 bg-indigo-100 px-3 py-1.5 rounded-lg hover:bg-indigo-200"
+                            >
+                              🌫️ 얼굴이 덜 가려졌어요 → 사진 전체 블러 처리
+                            </button>
+                          )}
+                        </div>
                       )}
                       <input
                         className="w-full p-3 border border-gray-200 rounded-xl font-bold text-gray-900 mb-3 focus:border-indigo-500 outline-none"

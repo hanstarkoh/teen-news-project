@@ -4,7 +4,33 @@ import { scrapeFetch, scrapeText } from '@/lib/scrapeFetch';
 import { resolveSafeBlurredUrl } from '@/lib/cloudinary';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
-export type GalleryNotice = { title: string; url: string };
+export type GalleryNotice = { title: string; url: string; postDate: string | null };
+
+// 목록 항목 텍스트에서 작성일로 보이는 날짜를 최대한 찾아냅니다 (기관마다 표시 형식이 달라서
+// 전용 셀렉터 대신 정규식으로 흔한 패턴들을 시도합니다). 못 찾으면 null (모르면 걸러내지 않음).
+function extractPostDate(text: string): string | null {
+  let m = text.match(/(?<![\d.])(\d{4}|\d{2})[.\-](\d{1,2})[.\-](\d{1,2})(?![\d.])/);
+  if (m) {
+    let [, y, mo, d] = m;
+    if (y.length === 2) y = `20${y}`;
+    const mm = mo.padStart(2, '0');
+    const dd = d.padStart(2, '0');
+    if (+mm >= 1 && +mm <= 12 && +dd >= 1 && +dd <= 31) return `${y}-${mm}-${dd}`;
+    return null;
+  }
+  m = text.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
+  if (m) {
+    const [, y, mo, d] = m;
+    return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  return null;
+}
+
+// 활동이 뜸한 기관은 목록에 아주 오래된 글이 그대로 남아있는 경우가 있어서,
+// 작성일을 알아낼 수 있는데 이보다 오래됐으면 애초에 후보에서 제외합니다
+// (관리자 데스크·자동 초안 생성 모두 이 함수를 쓰므로 여기서 한 번에 걸러줍니다.
+//  작성일을 못 알아낸 경우는 모르는 걸 무조건 막지는 않고 그냥 통과시킵니다).
+const STALE_POST_LIMIT_MS = 365 * 24 * 60 * 60 * 1000;
 
 // 기관 갤러리 목록 페이지에서 게시물 목록을 긁어옵니다.
 export async function fetchGalleryNotices(source: GallerySource): Promise<GalleryNotice[]> {
@@ -33,9 +59,12 @@ export async function fetchGalleryNotices(source: GallerySource): Promise<Galler
       .trim();
     if (text.length < 2) return;
 
+    const postDate = extractPostDate($item.text());
+    if (postDate && Date.now() - new Date(postDate).getTime() > STALE_POST_LIMIT_MS) return;
+
     const absoluteUrl = href.startsWith('http') ? href : new URL(href, source.listUrl).href;
     if (!notices.find(n => n.url === absoluteUrl)) {
-      notices.push({ title: text, url: absoluteUrl });
+      notices.push({ title: text, url: absoluteUrl, postDate });
     }
   });
 

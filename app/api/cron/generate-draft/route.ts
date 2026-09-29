@@ -51,6 +51,11 @@ export async function GET(req: Request) {
       }]);
 
       if (error) {
+        // 23505 = unique_violation. 크론 두 개가 거의 동시에 돌면서 같은 글을
+        // 동시에 집어간 경우로, 실패가 아니라 오히려 중복 방지가 정상 작동한 것입니다.
+        if (error.code === '23505') {
+          return NextResponse.json({ generated: false, message: '다른 크론이 방금 같은 글을 먼저 가져갔습니다.' });
+        }
         console.error('초안 저장 실패:', error);
         return NextResponse.json({ error: '초안 저장 실패', detail: error.message }, { status: 500 });
       }

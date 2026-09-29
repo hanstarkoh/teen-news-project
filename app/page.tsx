@@ -82,7 +82,9 @@ export default function Home() {
   }, [searchTerm, filter, institutionFilter, startDate, endDate]);
 
   const fetchData = async () => {
-    const { data } = await supabase.from('articles').select('*').order('published_at', { ascending: false });
+    // Supabase 기본 응답 상한(1000행)에 걸리지 않도록 명시적으로 크게 잡아둡니다.
+    // (기사 수가 1000개를 넘기면서 오래된 기사가 홈 화면에서 아예 안 불러와지던 버그)
+    const { data } = await supabase.from('articles').select('*').order('published_at', { ascending: false }).range(0, 9999);
     if (data) {
       setArticles(data.filter(item => item.source_type !== 'ad'));
       setAds(data.filter(item => item.source_type === 'ad'));
