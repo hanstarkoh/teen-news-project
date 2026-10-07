@@ -64,7 +64,14 @@ export default function AIDeskPage() {
     }]);
 
     if (error) {
-      alert('발행 실패: ' + error.message);
+      if (error.code === '23505') {
+        // 이 원본 글은 이미 다른 경로로 발행된 상태 - 이 초안은 더 이상 쓸모가 없으니 같이 정리합니다.
+        alert('이미 같은 글로 발행된 기사가 있어서 건너뛰었어요. 이 초안은 자동으로 정리할게요.');
+        await supabase.from('draft_articles').delete().eq('id', draft.id);
+        setAutoDrafts(prev => prev.filter(d => d.id !== draft.id));
+      } else {
+        alert('발행 실패: ' + error.message);
+      }
       return;
     }
     await supabase.from('draft_articles').delete().eq('id', draft.id);
@@ -141,13 +148,18 @@ export default function AIDeskPage() {
     }]);
 
     if (error) {
-      alert('발행 실패: ' + error.message);
+      if (error.code === '23505') {
+        alert('이미 같은 글로 발행된 기사가 있어요. 이 초안은 닫을게요.');
+      } else {
+        alert('발행 실패: ' + error.message);
+        return;
+      }
     } else {
       alert('🎉 메인 뉴스에 발행되었습니다!');
-      const newDrafts = {...drafts};
-      delete newDrafts[index];
-      setDrafts(newDrafts);
     }
+    const newDrafts = {...drafts};
+    delete newDrafts[index];
+    setDrafts(newDrafts);
   };
 
   const updateDraft = (index: number, field: 'title' | 'content', value: string) => {
