@@ -148,13 +148,13 @@ export default function ArticleClient() {
   const handleUpdate = async () => {
     const { error } = await supabase.from('articles').update({ title: editTitle, summary: editSummary, thumbnail_url: editImageUrl }).eq('id', id);
     if (!error) {
-      alert('기사가 성공적으로 수정되었습니다! ✨');
+      alert('기사가 성공적으로 수정되었습니다.');
       setArticle({ ...article, title: editTitle, summary: editSummary, thumbnail_url: editImageUrl });
       setIsEditing(false);
     }
   };
 
-  if (loading) return <div className="p-20 text-center text-xl font-bold text-gray-500">기사를 불러오는 중입니다... 🌊</div>;
+  if (loading) return <div className="p-20 text-center text-xl font-bold text-gray-500">기사를 불러오는 중입니다...</div>;
   if (!article) return <div className="p-20 text-center text-red-500 text-xl font-bold">기사를 찾을 수 없습니다.</div>;
 
   const defaultImage = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop";
@@ -172,25 +172,25 @@ export default function ArticleClient() {
       <main className="max-w-7xl mx-auto mt-10 px-6 flex flex-col md:flex-row gap-10">
         <div className="flex-1 max-w-3xl">
           {isAdmin && article.source_type === 'manual' && (
-            <div className="mb-8 flex justify-end gap-3 bg-blue-50 p-4 rounded-2xl border border-blue-100">
-              <span className="mr-auto font-bold text-blue-700 my-auto">🛠️ 기사 관리 모드</span>
+            <div className="mb-8 flex justify-end gap-3 bg-gray-50 p-4 border border-gray-200">
+              <span className="mr-auto font-bold text-gray-700 text-sm my-auto">기사 관리 모드</span>
               {!isEditing ? (
                 <>
-                  <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl shadow hover:bg-blue-700">수정</button>
-                  <button onClick={handleDelete} className="px-4 py-2 bg-red-500 text-white font-bold rounded-xl shadow hover:bg-red-600">삭제</button>
+                  <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-gray-900 text-white font-bold text-sm hover:bg-black">수정</button>
+                  <button onClick={handleDelete} className="px-4 py-2 bg-white text-red-600 border border-red-200 font-bold text-sm hover:bg-red-50">삭제</button>
                 </>
               ) : (
-                <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-400 text-white font-bold rounded-xl shadow">취소</button>
+                <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-300 text-white font-bold text-sm">취소</button>
               )}
             </div>
           )}
 
           {isEditing ? (
             <div className="space-y-4">
-              <input className="w-full p-4 border rounded-xl bg-gray-50 text-2xl font-bold text-gray-900" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
-              <input className="w-full p-4 border rounded-xl bg-gray-50 text-gray-900" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
-              <textarea className="w-full p-4 border rounded-xl bg-gray-50 h-96 text-gray-900" value={editSummary} onChange={(e) => setEditSummary(e.target.value)} />
-              <button onClick={handleUpdate} className="w-full bg-blue-700 text-white font-bold py-4 rounded-xl shadow hover:bg-blue-800">저장하기</button>
+              <input className="w-full p-3 border border-gray-300 bg-white text-2xl font-bold text-gray-900 outline-none focus:ring-1 focus:ring-gray-900" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              <input className="w-full p-3 border border-gray-300 bg-white text-sm text-gray-900 outline-none focus:ring-1 focus:ring-gray-900" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
+              <textarea className="w-full p-3 border border-gray-300 bg-white h-96 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-gray-900" value={editSummary} onChange={(e) => setEditSummary(e.target.value)} />
+              <button onClick={handleUpdate} className="w-full bg-gray-900 text-white font-bold py-3 text-sm hover:bg-black">저장하기</button>
             </div>
           ) : (
             <>
@@ -227,7 +227,7 @@ export default function ArticleClient() {
                         onClick={() => handleReaction(key)}
                         disabled={reactionLoading !== null}
                         title={label}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-sm border transition-colors ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-300 hover:border-blue-300 hover:text-blue-600'}`}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-sm border transition-colors ${active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-300 hover:border-gray-900 hover:text-gray-900'}`}
                       >
                         <span>{emoji}</span>
                         <span>{article[key] || 0}</span>
@@ -244,7 +244,7 @@ export default function ArticleClient() {
                 )}
                 {article.thumbnail_url?.includes('/e_blur:') && (
                   <p className="text-xs text-gray-400 mt-1">
-                    ⚠️ 사진 속 인물의 얼굴이 자동으로 인식되지 않아 사진 전체를 흐리게 처리했습니다.
+                    사진 속 인물의 얼굴이 자동으로 인식되지 않아 사진 전체를 흐리게 처리했습니다.
                     {article.original_link && (
                       <> 자세한 사진은 <a href={article.original_link} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">원문</a>에서 확인해주세요.</>
                     )}
@@ -268,7 +268,7 @@ export default function ArticleClient() {
                   rel="noopener noreferrer"
                   className="mt-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-gray-200 px-6 py-4 transition-colors group"
                 >
-                  <span className="font-bold text-gray-600 group-hover:text-gray-900">📷 {sourceName ? `${sourceName} ` : ''}원본 사진/게시물 더 보러가기</span>
+                  <span className="font-bold text-gray-600 group-hover:text-gray-900">{sourceName ? `${sourceName} ` : ''}원본 사진/게시물 더 보러가기</span>
                   <span className="text-gray-400 group-hover:text-gray-900">↗</span>
                 </a>
               )}
@@ -304,7 +304,7 @@ export default function ArticleClient() {
                   </a>
                   {isAdmin && (
                     <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-blue-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">수정</button>
+                      <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-gray-900 text-white p-2 rounded-full shadow-lg text-xs font-bold">수정</button>
                       <button onClick={() => handleDeleteAd(ad.id)} className="bg-red-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">삭제</button>
                     </div>
                   )}

@@ -18,7 +18,7 @@ export default function HotPlacePage() {
 
   const [selectedLatLng, setSelectedLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('가성비 맛집 🍔');
+  const [category, setCategory] = useState('가성비 맛집');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,7 +52,7 @@ export default function HotPlacePage() {
     }
   };
 
-  // ⭐️ API 키 없이 완전 무료 지도를 가져오는 마법의 로직
+  // API 키 없이 완전 무료 지도를 가져오는 로직
   useEffect(() => {
     const initMap = () => {
       if (!window.L || !mapContainer.current || map) return;
@@ -103,7 +103,7 @@ export default function HotPlacePage() {
     }
   }, []);
 
-  // ⭐️ 승인된 핫플만 지도에 뿌려주기
+  // 승인된 핫플만 지도에 뿌려주기
   useEffect(() => {
     if (!map || !window.L) return;
 
@@ -113,15 +113,15 @@ export default function HotPlacePage() {
 
     approvedPlaces.forEach(place => {
       const marker = window.L.marker([place.lat, place.lng]).addTo(map);
-      
+
       const popupContent = `
         <div style="width:180px;">
-          <h4 style="font-weight:bold; color:#1e40af; margin-bottom:4px; font-size:14px;">${place.title}</h4>
-          <span style="font-size:11px; background:#f3f4f6; padding:2px 6px; border-radius:4px; font-weight:bold;">${place.category}</span>
+          <h4 style="font-weight:bold; color:#111827; margin-bottom:4px; font-size:14px;">${place.title}</h4>
+          <span style="font-size:11px; background:#f3f4f6; padding:2px 6px; font-weight:bold;">${place.category}</span>
           <p style="font-size:12px; margin-top:6px; color:#4b5563;">${place.description}</p>
         </div>
       `;
-      
+
       marker.bindPopup(popupContent);
       markersRef.current.push(marker);
     });
@@ -137,7 +137,7 @@ export default function HotPlacePage() {
     }]);
 
     if (!error) {
-      alert('🎉 등록되었습니다! 편집장 승인 후 지도에 표시됩니다.');
+      alert('등록되었습니다. 편집장 승인 후 지도에 표시됩니다.');
       setTitle('');
       setDescription('');
       setSelectedLatLng(null);
@@ -149,74 +149,74 @@ export default function HotPlacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-blue-50 py-10 px-4 text-gray-900">
+    <div className="min-h-screen bg-white py-10 px-4 text-gray-900">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <button onClick={() => router.push('/')} className="text-gray-500 font-bold hover:text-blue-700">← 홈으로</button>
-          <h1 className="text-3xl font-black text-blue-900 tracking-tight">🗺️ 부산 청소년 핫플 지도</h1>
+        <div className="flex justify-between items-center mb-8 border-b border-gray-900 pb-4">
+          <button onClick={() => router.push('/')} className="text-gray-500 font-bold text-sm hover:text-gray-900">← 홈으로</button>
+          <h1 className="font-serif text-3xl font-black text-gray-900 tracking-tight">부산 청소년 핫플 지도</h1>
           <div className="w-16"></div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
-          <div className="w-full lg:w-2/3 bg-white p-4 rounded-3xl shadow-md border border-blue-100">
-            <p className="text-sm font-bold text-blue-600 mb-4 ml-2">👇 지도에서 원하는 위치를 클릭하면 핫플을 등록할 수 있어요!</p>
-            
-            {/* ⭐️ 자유의 상징! 오픈소스 지도가 그려질 도화지 (z-0을 줘서 메뉴바를 안 가리게 함) */}
-            <div ref={mapContainer} className="w-full h-[500px] rounded-2xl border border-gray-200 z-0 relative"></div>
+          <div className="w-full lg:w-2/3 bg-white p-4 border border-gray-200">
+            <p className="text-sm font-bold text-gray-500 mb-4 ml-2">지도에서 원하는 위치를 클릭하면 핫플을 등록할 수 있어요.</p>
+
+            {/* 오픈소스 지도가 그려질 도화지 (z-0을 줘서 메뉴바를 안 가리게 함) */}
+            <div ref={mapContainer} className="w-full h-[500px] border border-gray-200 z-0 relative"></div>
           </div>
 
           <div className="w-full lg:w-1/3 space-y-6">
-            <div className="bg-white p-6 rounded-3xl shadow-md border border-blue-100">
-              <h3 className="font-bold text-xl mb-4">📍 내 아지트 공유하기</h3>
+            <div className="bg-white p-6 border border-gray-200">
+              <h3 className="font-serif font-bold text-gray-900 text-sm border-b-2 border-gray-900 pb-2 mb-4">내 아지트 공유하기</h3>
 
               {!selectedLatLng ? (
-                <div className="bg-blue-50 text-blue-800 p-6 rounded-2xl font-bold text-center border border-dashed border-blue-300">
-                  먼저 왼쪽 지도에서<br/>공유하고 싶은 장소를 클릭해주세요!
+                <div className="bg-gray-50 text-gray-600 p-6 font-bold text-center text-sm border border-dashed border-gray-300">
+                  먼저 왼쪽 지도에서<br/>공유하고 싶은 장소를 클릭해주세요.
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="text-xs font-bold text-gray-400">위치가 선택되었습니다! 내용을 입력해주세요.</div>
-                  <input className="w-full p-3 border rounded-xl bg-gray-50 text-gray-900 font-bold" placeholder="장소 이름 (예: 동래역 앞 스터디카페)" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                  <div className="text-xs font-bold text-gray-400">위치가 선택되었습니다. 내용을 입력해주세요.</div>
+                  <input className="w-full p-3 border border-gray-300 bg-white text-gray-900 font-bold text-sm outline-none focus:ring-1 focus:ring-gray-900" placeholder="장소 이름 (예: 동래역 앞 스터디카페)" value={title} onChange={(e) => setTitle(e.target.value)} required />
 
-                  <select className="w-full p-3 border rounded-xl bg-gray-50 text-gray-900 font-bold" value={category} onChange={(e) => setCategory(e.target.value)}>
-                    <option>가성비 맛집 🍔</option>
-                    <option>스터디 카페 📚</option>
-                    <option>사진 맛집 📸</option>
-                    <option>휴식/놀거리 🎮</option>
+                  <select className="w-full p-3 border border-gray-300 bg-white text-gray-900 font-bold text-sm outline-none focus:ring-1 focus:ring-gray-900" value={category} onChange={(e) => setCategory(e.target.value)}>
+                    <option>가성비 맛집</option>
+                    <option>스터디 카페</option>
+                    <option>사진 맛집</option>
+                    <option>휴식/놀거리</option>
                   </select>
 
-                  <textarea className="w-full p-3 border rounded-xl bg-gray-50 text-gray-900 h-24" placeholder="이곳의 꿀팁이나 특징을 알려주세요!" value={description} onChange={(e) => setDescription(e.target.value)} required />
+                  <textarea className="w-full p-3 border border-gray-300 bg-white text-gray-900 text-sm h-24 outline-none focus:ring-1 focus:ring-gray-900" placeholder="이곳의 꿀팁이나 특징을 알려주세요." value={description} onChange={(e) => setDescription(e.target.value)} required />
 
-                  <button type="submit" disabled={submitting} className="w-full bg-blue-700 text-white font-bold p-4 rounded-xl shadow-md hover:bg-blue-800 transition">
-                    {submitting ? '등록 중...' : '지도에 핀 꽂기! 📌'}
+                  <button type="submit" disabled={submitting} className="w-full bg-gray-900 text-white font-bold p-3 text-sm hover:bg-black transition">
+                    {submitting ? '등록 중...' : '지도에 핀 꽂기'}
                   </button>
-                  <button type="button" onClick={() => setSelectedLatLng(null)} className="w-full text-gray-400 font-bold text-sm hover:text-gray-600">선택 취소</button>
+                  <button type="button" onClick={() => setSelectedLatLng(null)} className="w-full text-gray-400 font-bold text-xs hover:text-gray-600">선택 취소</button>
                 </form>
               )}
             </div>
-            
-            <div className="bg-gradient-to-br from-indigo-500 to-blue-600 p-6 rounded-3xl shadow-md text-white">
-              <h3 className="font-bold text-lg mb-2">💡 이용 가이드</h3>
-              <ul className="text-sm space-y-2 opacity-90">
-                <li>• 누구나 핫플을 등록할 수 있어요.</li>
-                <li>• 편집장 승인 후에 지도에 표시됩니다.</li>
-                <li>• 부적절한 장소 등록 시 관리자에 의해 삭제될 수 있습니다.</li>
-                <li>• 지도에 찍힌 핀을 클릭하면 정보를 볼 수 있어요!</li>
+
+            <div className="bg-gray-50 p-6 border border-gray-200">
+              <h3 className="font-serif font-bold text-gray-900 text-sm border-b-2 border-gray-900 pb-2 mb-3">이용 가이드</h3>
+              <ul className="text-xs text-gray-600 space-y-2">
+                <li>· 누구나 핫플을 등록할 수 있어요.</li>
+                <li>· 편집장 승인 후에 지도에 표시됩니다.</li>
+                <li>· 부적절한 장소 등록 시 관리자에 의해 삭제될 수 있습니다.</li>
+                <li>· 지도에 찍힌 핀을 클릭하면 정보를 볼 수 있어요.</li>
               </ul>
             </div>
 
             {isAdmin && pendingPlaces.length > 0 && (
-              <div className="bg-white p-6 rounded-3xl shadow-md border border-orange-200">
-                <h3 className="font-bold text-lg mb-4 text-orange-600">🕵️ 승인 대기 중인 핫플 ({pendingPlaces.length})</h3>
+              <div className="bg-white p-6 border border-gray-200">
+                <h3 className="font-serif font-bold text-gray-900 text-sm border-b-2 border-red-600 pb-2 mb-4">승인 대기 중인 핫플 ({pendingPlaces.length})</h3>
                 <div className="space-y-3">
                   {pendingPlaces.map(place => (
-                    <div key={place.id} className="border border-gray-200 rounded-2xl p-4">
-                      <div className="font-bold text-gray-900">{place.title}</div>
+                    <div key={place.id} className="border border-gray-200 p-4">
+                      <div className="font-bold text-gray-900 text-sm">{place.title}</div>
                       <div className="text-xs text-gray-400 font-bold mb-1">{place.category}</div>
                       <p className="text-sm text-gray-600 mb-3">{place.description}</p>
                       <div className="flex gap-2">
-                        <button onClick={() => handleApprovePlace(place.id)} className="flex-1 bg-blue-600 text-white text-sm font-bold py-2 rounded-xl hover:bg-blue-700">승인</button>
-                        <button onClick={() => handleDeletePlace(place.id)} className="flex-1 bg-red-100 text-red-600 text-sm font-bold py-2 rounded-xl hover:bg-red-200">삭제</button>
+                        <button onClick={() => handleApprovePlace(place.id)} className="flex-1 bg-gray-900 text-white text-xs font-bold py-2 hover:bg-black">승인</button>
+                        <button onClick={() => handleDeletePlace(place.id)} className="flex-1 bg-white text-red-600 border border-red-200 text-xs font-bold py-2 hover:bg-red-50">삭제</button>
                       </div>
                     </div>
                   ))}

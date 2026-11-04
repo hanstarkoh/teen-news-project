@@ -63,58 +63,58 @@ function AdForm() {
     }
 
     if (error) {
-      alert('광고 저장 실패 ㅜㅜ : ' + error.message);
+      alert('광고 저장 실패: ' + error.message);
     } else {
-      alert(editId ? '광고가 성공적으로 수정되었습니다! ✨' : '새 광고가 등록되었습니다! 💸');
+      alert(editId ? '광고가 성공적으로 수정되었습니다.' : '새 광고가 등록되었습니다.');
       router.push('/'); // 완료 후 메인 화면으로 복귀
     }
   };
 
   // 관리자가 아니면 빈 화면만 보여줍니다.
-  if (!isAdmin) return <div className="min-h-screen bg-gray-50"></div>;
+  if (!isAdmin) return <div className="min-h-screen bg-white"></div>;
 
   return (
-    <div className="max-w-xl mx-auto p-10 mt-10 bg-white rounded-2xl shadow-xl border border-gray-100">
+    <div className="max-w-xl mx-auto p-10 mt-10 bg-white border border-gray-900">
       <div className="mb-6">
-        <button onClick={() => router.push('/')} className="text-gray-500 hover:text-indigo-600 font-bold flex items-center gap-2 transition-colors">
+        <button onClick={() => router.push('/')} className="text-gray-500 hover:text-gray-900 font-bold text-sm flex items-center gap-2 transition-colors">
           ← 홈으로 돌아가기
         </button>
       </div>
-      
-      <h1 className="text-3xl font-black mb-2 text-indigo-600">
-        {editId ? '💸 배너 광고 수정하기' : '💸 새 배너 광고 등록'}
+
+      <h1 className="font-serif text-3xl font-black mb-2 text-gray-900">
+        {editId ? '배너 광고 수정하기' : '새 배너 광고 등록'}
       </h1>
-      <p className="text-gray-500 mb-8 font-medium">메인 화면 오른쪽에 3:4 비율로 노출될 배너입니다.</p>
-      
+      <p className="text-gray-500 mb-8 text-sm font-medium border-b border-gray-200 pb-6">메인 화면 오른쪽에 3:4 비율로 노출될 배너입니다.</p>
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block mb-2 font-bold text-gray-700">광고 이름 (관리용)</label>
-          <input 
-            className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 outline-none transition-all" 
-            value={title} 
-            onChange={(e) => setTitle(e.target.value)} 
-            placeholder="예: 부산 코딩학원 겨울특강" 
-            required 
+          <label className="block mb-2 font-bold text-gray-700 text-sm">광고 이름 (관리용)</label>
+          <input
+            className="w-full p-3 border border-gray-300 focus:ring-1 focus:ring-gray-900 bg-white text-sm outline-none transition-all"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="예: 부산 코딩학원 겨울특강"
+            required
           />
         </div>
 
         <div>
-          <label className="block mb-2 font-bold text-gray-700">배너 이미지 주소 (URL)</label>
-          <input 
-            className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 outline-none transition-all" 
-            value={imageUrl} 
-            onChange={(e) => setImageUrl(e.target.value)} 
-            placeholder="인터넷 이미지 우클릭 -> 주소 복사" 
-            required 
+          <label className="block mb-2 font-bold text-gray-700 text-sm">배너 이미지 주소 (URL)</label>
+          <input
+            className="w-full p-3 border border-gray-300 focus:ring-1 focus:ring-gray-900 bg-white text-sm outline-none transition-all"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            placeholder="인터넷 이미지 우클릭 -> 주소 복사"
+            required
           />
-          {/* 이미지 주소를 넣으면 3:4 비율로 미리보기를 보여줍니다! */}
+          {/* 이미지 주소를 넣으면 3:4 비율로 미리보기를 보여줍니다 */}
           {imageUrl && (
             <div className="mt-4 flex flex-col items-start">
-              <span className="text-sm text-gray-500 mb-2 font-bold">👀 3:4 비율 미리보기</span>
-              <img 
-                src={imageUrl} 
-                className="w-32 aspect-[3/4] object-cover rounded-xl border border-gray-200 shadow-sm" 
-                alt="광고 미리보기" 
+              <span className="text-xs text-gray-500 mb-2 font-bold">3:4 비율 미리보기</span>
+              <img
+                src={imageUrl}
+                className="w-32 aspect-[3/4] object-cover border border-gray-200"
+                alt="광고 미리보기"
                 onError={(e) => (e.currentTarget.style.display = 'none')}
               />
             </div>
@@ -122,17 +122,17 @@ function AdForm() {
         </div>
 
         <div>
-          <label className="block mb-2 font-bold text-gray-700">클릭 시 이동할 링크 주소</label>
-          <input 
-            className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 outline-none transition-all" 
-            value={linkUrl} 
-            onChange={(e) => setLinkUrl(e.target.value)} 
-            placeholder="https://..." 
-            required 
+          <label className="block mb-2 font-bold text-gray-700 text-sm">클릭 시 이동할 링크 주소</label>
+          <input
+            className="w-full p-3 border border-gray-300 focus:ring-1 focus:ring-gray-900 bg-white text-sm outline-none transition-all"
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            placeholder="https://..."
+            required
           />
         </div>
 
-        <button type="submit" className="w-full bg-indigo-600 text-white p-4 rounded-xl font-bold text-lg hover:bg-indigo-700 shadow-md transition-all">
+        <button type="submit" className="w-full bg-gray-900 text-white p-3 font-bold text-sm hover:bg-black transition-all">
           {editId ? '수정된 내용 저장하기' : '메인 화면에 광고 걸기'}
         </button>
       </form>
@@ -140,11 +140,11 @@ function AdForm() {
   );
 }
 
-// ⭐️ 최종 페이지 컴포넌트 (Next.js 최신 문법에 맞게 Suspense로 감싸줍니다)
+// 최종 페이지 컴포넌트 (Next.js 최신 문법에 맞게 Suspense로 감싸줍니다)
 export default function AdPage() {
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <Suspense fallback={<div className="p-20 text-center font-bold text-indigo-500">광고 에디터 불러오는 중...</div>}>
+    <div className="min-h-screen bg-white pb-20">
+      <Suspense fallback={<div className="p-20 text-center font-bold text-gray-500 text-sm">광고 에디터 불러오는 중...</div>}>
         <AdForm />
       </Suspense>
     </div>

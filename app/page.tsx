@@ -117,16 +117,16 @@ export default function Home() {
 
   const handleScrape = async () => {
     setIsScraping(true);
-    alert('🤖 로봇 기자가 타 언론사 뉴스를 수집합니다!');
+    alert('타 언론사 뉴스를 수집합니다.');
     try {
       const response = await fetch('/api/scrape');
       const result = await response.json();
       if (response.ok) {
-        alert(`✅ 수집 완료! 중복을 제외하고 ${result.count}개의 새 기사를 가져왔습니다.`);
+        alert(`수집 완료. 중복을 제외하고 ${result.count}개의 새 기사를 가져왔습니다.`);
         fetchData();
       }
     } catch (error) {
-      alert('❌ 실패');
+      alert('실패');
     }
     setIsScraping(false);
   };
@@ -183,7 +183,7 @@ export default function Home() {
             <a href="/programs" className="hover:text-white transition flex items-center gap-1">
               프로그램 지도
               {isAdmin && pendingPrograms > 0 && (
-                <span className="bg-emerald-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingPrograms > 9 ? '9+' : pendingPrograms}</span>
+                <span className="bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingPrograms > 9 ? '9+' : pendingPrograms}</span>
               )}
             </a>
             <a href="/bamboo" className="hover:text-white transition">대나무숲</a>
@@ -193,7 +193,7 @@ export default function Home() {
                 <a href="/admin/desk" className="hover:text-white transition flex items-center gap-1">
                   AI 데스크
                   {pendingAutoDrafts > 0 && (
-                    <span className="bg-orange-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingAutoDrafts > 9 ? '9+' : pendingAutoDrafts}</span>
+                    <span className="bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingAutoDrafts > 9 ? '9+' : pendingAutoDrafts}</span>
                   )}
                 </a>
                 <button onClick={handleScrape} disabled={isScraping} className="hover:text-white transition disabled:text-gray-500">
@@ -264,19 +264,19 @@ export default function Home() {
           </div>
           {openPrograms.length > 0 && (
             <div>
-              <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-emerald-700 pb-2 leading-snug">📅 모집중인 부산지역 청소년 프로그램</h3>
+              <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-gray-900 pb-2 leading-snug">모집중인 부산지역 청소년 프로그램</h3>
               <ul className="space-y-3">
                 {openPrograms.map(p => (
                   <li key={p.id}>
                     <a href="/programs" className="block group">
-                      <div className="text-xs font-bold text-emerald-700">{p.institution_name}</div>
+                      <div className="text-xs font-bold text-gray-700">{p.institution_name}</div>
                       <div className="text-sm font-bold text-gray-900 leading-snug line-clamp-2 group-hover:underline">{p.program_name}</div>
                       <div className="text-xs text-gray-400">{p.deadline_date ? `마감 ${p.deadline}` : '상시모집'}</div>
                     </a>
                   </li>
                 ))}
               </ul>
-              <a href="/programs" className="block text-right text-xs font-bold text-emerald-700 hover:underline mt-3">지도에서 전체 보기 →</a>
+              <a href="/programs" className="block text-right text-xs font-bold text-gray-700 hover:underline mt-3">지도에서 전체 보기 →</a>
             </div>
           )}
         </aside>
@@ -287,7 +287,7 @@ export default function Home() {
             <span className="text-gray-400 font-bold text-xs">총 {filteredArticles.length}건</span>
           </div>
           {loading ? (
-            <div className="text-center py-20 font-bold text-gray-500">뉴스를 불러오는 중입니다... 🌊</div>
+            <div className="text-center py-20 font-bold text-gray-500">뉴스를 불러오는 중입니다...</div>
           ) : (
             <>
               {paginatedArticles.length === 0 ? (
@@ -308,8 +308,8 @@ export default function Home() {
                         <p className="text-gray-600 leading-relaxed line-clamp-2 mb-3">{heroArticle.summary}</p>
                         <div className="text-xs text-gray-400 font-medium flex items-center gap-3">
                           <span>{new Date(heroArticle.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                          {heroArticle.source_type === 'manual' && <span>❤️ {heroArticle.likes || 0}</span>}
-                          {heroArticle.source_type === 'manual' && <span>👁 {heroArticle.views || 0}</span>}
+                          {heroArticle.source_type === 'manual' && <span>좋아요 {heroArticle.likes || 0}</span>}
+                          {heroArticle.source_type === 'manual' && <span>조회 {heroArticle.views || 0}</span>}
                         </div>
                       </a>
                     </div>
@@ -335,8 +335,8 @@ export default function Home() {
                           <p className="text-gray-500 text-sm line-clamp-2 mb-2">{article.summary}</p>
                           <div className="text-xs text-gray-400 font-medium flex items-center gap-3">
                             <span>{new Date(article.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                            {article.source_type === 'manual' && <span>❤️ {article.likes || 0}</span>}
-                            {article.source_type === 'manual' && <span>👁 {article.views || 0}</span>}
+                            {article.source_type === 'manual' && <span>좋아요 {article.likes || 0}</span>}
+                            {article.source_type === 'manual' && <span>조회 {article.views || 0}</span>}
                           </div>
                         </a>
                       </div>
@@ -361,7 +361,7 @@ export default function Home() {
         <aside className="w-full md:w-1/4 space-y-8">
           {popularArticles.length > 0 && (
             <div>
-              <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-gray-900 pb-2">🔥 인기 기사</h3>
+              <h3 className="font-serif font-bold text-gray-900 mb-3 text-sm border-b-2 border-gray-900 pb-2">인기 기사</h3>
               <ol className="space-y-3">
                 {popularArticles.map((article, i) => (
                   <li key={article.id}>
@@ -382,13 +382,13 @@ export default function Home() {
           <div className="flex flex-col gap-6">
             {ads.map((ad) => (
               <div key={ad.id} className="group relative">
-                <a href={ad.original_link} target="_blank" rel="noopener noreferrer" className="block relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-200 bg-white aspect-[3/4]">
+                <a href={ad.original_link} target="_blank" rel="noopener noreferrer" className="block relative overflow-hidden border border-gray-200 bg-white aspect-[3/4] hover:border-gray-900 transition-colors">
                   <img src={ad.thumbnail_url} alt="배너 광고" className="w-full h-full object-cover"/>
                   <div className="absolute top-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 m-1 rounded">AD</div>
                 </a>
                 {isAdmin && (
                   <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-blue-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">수정</button>
+                    <button onClick={() => router.push(`/ad?id=${ad.id}`)} className="bg-gray-900 text-white p-2 rounded-full shadow-lg text-xs font-bold">수정</button>
                     <button onClick={() => handleDeleteAd(ad.id)} className="bg-red-600 text-white p-2 rounded-full shadow-lg text-xs font-bold">삭제</button>
                   </div>
                 )}

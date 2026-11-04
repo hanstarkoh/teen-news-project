@@ -75,7 +75,7 @@ export default function AIDeskPage() {
       return;
     }
     await supabase.from('draft_articles').delete().eq('id', draft.id);
-    alert('🎉 메인 뉴스에 발행되었습니다!');
+    alert('메인 뉴스에 발행되었습니다.');
     setAutoDrafts(prev => prev.filter(d => d.id !== draft.id));
   };
 
@@ -155,7 +155,7 @@ export default function AIDeskPage() {
         return;
       }
     } else {
-      alert('🎉 메인 뉴스에 발행되었습니다!');
+      alert('메인 뉴스에 발행되었습니다.');
     }
     const newDrafts = {...drafts};
     delete newDrafts[index];
@@ -180,25 +180,25 @@ export default function AIDeskPage() {
   if (!isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10 px-4">
+    <div className="min-h-screen bg-white py-10 px-4">
       <div className="max-w-5xl mx-auto space-y-6">
-        
-        <div className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+
+        <div className="flex justify-between items-center bg-white p-6 border border-gray-900 border-b-2">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 mb-2">🕵️‍♂️ AI 편집 데스크</h1>
-            <p className="text-gray-500 font-bold">타 기관 활동 갤러리를 검토하고 뉴스로 발행하는 컨트롤 타워입니다.</p>
+            <h1 className="font-serif text-3xl font-black text-gray-900 mb-2">AI 편집 데스크</h1>
+            <p className="text-gray-500 font-bold text-sm">타 기관 활동 갤러리를 검토하고 뉴스로 발행하는 컨트롤 타워입니다.</p>
           </div>
-          <button onClick={() => router.push('/')} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-bold hover:bg-gray-200">홈으로</button>
+          <button onClick={() => router.push('/')} className="bg-gray-100 text-gray-700 px-4 py-2 text-sm font-bold hover:bg-gray-200">홈으로</button>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-orange-200">
+        <div className="bg-white p-6 border border-gray-200">
           <div className="flex items-center gap-2 mb-1">
-            <h2 className="font-bold text-lg text-orange-700">🤖 자동 생성된 초안</h2>
+            <h2 className="font-serif font-bold text-gray-900 text-sm border-b-2 border-red-600 pb-2">자동 생성된 초안</h2>
             {!loadingAutoDrafts && autoDrafts.length > 0 && (
-              <span className="bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{autoDrafts.length}</span>
+              <span className="bg-red-600 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">{autoDrafts.length}</span>
             )}
           </div>
-          <p className="text-xs text-gray-400 mb-4">매일 새벽 여러 기관을 돌아가며 자동으로 만들어둔 초안입니다. 검수 후 발행하거나 폐기하세요.</p>
+          <p className="text-xs text-gray-400 mb-4 mt-2">매일 새벽 여러 기관을 돌아가며 자동으로 만들어둔 초안입니다. 검수 후 발행하거나 폐기하세요.</p>
 
           {loadingAutoDrafts ? (
             <div className="text-center py-8 text-gray-400 font-bold text-sm">불러오는 중...</div>
@@ -207,10 +207,10 @@ export default function AIDeskPage() {
           ) : (
             <div className="space-y-4">
               {autoDrafts.map((draft) => (
-                <div key={draft.id} className="border border-orange-100 rounded-2xl p-5 bg-orange-50">
+                <div key={draft.id} className="border border-gray-200 p-5 bg-gray-50">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="bg-orange-200 text-orange-800 px-2 py-1 rounded text-xs font-bold">{draft.source_name}</span>
-                    <a href={draft.original_link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">원본 글 확인하기 ↗</a>
+                    <span className="bg-gray-900 text-white px-2 py-1 text-xs font-bold">{draft.source_name}</span>
+                    <a href={draft.original_link} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 hover:underline">원본 글 확인하기 ↗</a>
                   </div>
 
                   {draft.image_url && (
@@ -219,33 +219,33 @@ export default function AIDeskPage() {
                       <img
                         src={draft.image_url}
                         alt="대표 이미지 미리보기"
-                        className="w-full max-h-64 object-cover rounded-xl border border-gray-200"
+                        className="w-full max-h-64 object-cover border border-gray-200"
                       />
                       {draft.image_url.includes('e_blur_faces:1000') && (
                         <button
                           onClick={() => handleFullBlurAutoDraft(draft.id)}
-                          className="mt-2 text-xs font-bold text-orange-700 bg-orange-100 px-3 py-1.5 rounded-lg hover:bg-orange-200"
+                          className="mt-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 px-3 py-1.5 hover:bg-gray-100"
                         >
-                          🌫️ 얼굴이 덜 가려졌어요 → 사진 전체 블러 처리
+                          얼굴이 덜 가려졌어요 → 사진 전체 블러 처리
                         </button>
                       )}
                     </div>
                   )}
                   <input
-                    className="w-full p-3 border border-gray-200 rounded-xl font-bold text-gray-900 mb-3 focus:border-orange-400 outline-none"
+                    className="w-full p-3 border border-gray-300 font-bold text-gray-900 mb-3 text-sm outline-none focus:ring-1 focus:ring-gray-900"
                     value={draft.title}
                     onChange={(e) => updateAutoDraft(draft.id, 'title', e.target.value)}
                   />
                   <textarea
-                    className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 h-40 focus:border-orange-400 outline-none leading-relaxed"
+                    className="w-full p-3 border border-gray-300 text-gray-900 h-40 text-sm outline-none focus:ring-1 focus:ring-gray-900 leading-relaxed"
                     value={draft.content}
                     onChange={(e) => updateAutoDraft(draft.id, 'content', e.target.value)}
                   />
 
                   <div className="flex justify-end gap-3 mt-4">
-                    <button onClick={() => handleDiscardAutoDraft(draft.id)} className="px-5 py-2 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200">초안 폐기</button>
-                    <button onClick={() => handlePublishAutoDraft(draft)} className="px-6 py-2 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-md flex items-center gap-2">
-                      🚀 메인 뉴스에 발행하기
+                    <button onClick={() => handleDiscardAutoDraft(draft.id)} className="px-5 py-2 text-sm font-bold text-gray-500 bg-gray-100 hover:bg-gray-200">초안 폐기</button>
+                    <button onClick={() => handlePublishAutoDraft(draft)} className="px-6 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700">
+                      메인 뉴스에 발행하기
                     </button>
                   </div>
                 </div>
@@ -254,14 +254,14 @@ export default function AIDeskPage() {
           )}
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
-          <h2 className="font-bold text-lg mb-4 text-blue-900">📡 정보 수집 레이더</h2>
+        <div className="bg-white p-6 border border-gray-200">
+          <h2 className="font-serif font-bold text-gray-900 text-sm border-b-2 border-gray-900 pb-2 mb-4">정보 수집 레이더</h2>
           <div className="flex flex-col sm:flex-row gap-4">
             <select
               value={sourceId}
               onChange={(e) => handleSourceChange(e.target.value)}
               disabled={loadingList}
-              className="p-3 border border-gray-300 rounded-xl font-bold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500"
+              className="p-3 border border-gray-300 font-bold text-gray-800 text-sm outline-none focus:ring-1 focus:ring-gray-900"
             >
               {gallerySources.map(source => (
                 <option key={source.id} value={source.id}>{source.name}</option>
@@ -270,81 +270,81 @@ export default function AIDeskPage() {
             <button
               onClick={fetchNotices}
               disabled={loadingList}
-              className="bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-blue-700 transition flex items-center gap-2"
+              className="bg-gray-900 text-white font-bold py-3 px-6 text-sm hover:bg-black transition"
             >
-              {loadingList ? `📡 ${currentSource.name} 스캔 중...` : `📥 ${currentSource.name} 활동 갤러리 10개 불러오기`}
+              {loadingList ? `${currentSource.name} 스캔 중...` : `${currentSource.name} 활동 갤러리 10개 불러오기`}
             </button>
           </div>
         </div>
 
         {notices.length > 0 && (
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
-            <h2 className="font-bold text-lg mb-4 text-gray-800">📋 기사화 대기실 (총 {notices.length}건)</h2>
-            <p className="text-xs text-gray-400 -mt-2 mb-3">※ 사진 속 인물의 얼굴/인상착의는 AI가 초상권 보호를 위해 서술하지 않습니다.</p>
+          <div className="bg-white p-6 border border-gray-200">
+            <h2 className="font-serif font-bold text-gray-900 text-sm border-b-2 border-gray-900 pb-2 mb-1">기사화 대기실 (총 {notices.length}건)</h2>
+            <p className="text-xs text-gray-400 mb-3 mt-2">※ 사진 속 인물의 얼굴/인상착의는 AI가 초상권 보호를 위해 서술하지 않습니다.</p>
             <div className="space-y-4">
               {notices.map((notice, index) => (
-                <div key={index} className="border border-gray-200 rounded-2xl p-5 hover:border-blue-300 transition-all bg-gray-50">
+                <div key={index} className="border border-gray-200 p-5 hover:border-gray-900 transition-colors bg-gray-50">
                   <div className="flex justify-between items-start gap-4">
                     <div>
                       <h3 className="font-bold text-lg text-gray-900 mb-1">{notice.title}</h3>
-                      <a href={notice.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">원본 글 확인하기 ↗</a>
+                      <a href={notice.url} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 hover:underline">원본 글 확인하기 ↗</a>
                     </div>
-                    
+
                     {!drafts[index] && (
-                      <button 
+                      <button
                         onClick={() => generateDraft(index, notice.url, notice.title)}
                         disabled={processingId !== null}
-                        className={`px-4 py-2 rounded-xl font-bold text-sm shadow text-white flex-shrink-0 ${processingId === index ? 'bg-indigo-300' : processingId !== null ? 'bg-gray-300' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                        className={`px-4 py-2 text-sm font-bold text-white flex-shrink-0 ${processingId === index ? 'bg-gray-400' : processingId !== null ? 'bg-gray-300' : 'bg-gray-900 hover:bg-black'}`}
                       >
-                        {processingId === index ? '🤖 AI가 기사 쓰는 중...' : '✨ 이 글로 기사 초안 쓰기'}
+                        {processingId === index ? 'AI가 기사 쓰는 중...' : '이 글로 기사 초안 쓰기'}
                       </button>
                     )}
                   </div>
 
                   {drafts[index] && (
-                    <div className="mt-6 bg-white p-5 rounded-2xl border-2 border-indigo-200 shadow-inner">
+                    <div className="mt-6 bg-white p-5 border-2 border-gray-900">
                       <div className="flex items-center gap-2 mb-4">
-                        <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-bold">AI 초안 완료</span>
+                        <span className="bg-gray-900 text-white px-2 py-1 text-xs font-bold">AI 초안 완료</span>
                         <span className="text-sm text-gray-500 font-bold">내용을 직접 수정한 뒤 발행할 수 있습니다.</span>
                       </div>
-                      
+
                       {drafts[index].imageUrl && (
                         <div className="mb-3">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={drafts[index].imageUrl}
                             alt="대표 이미지 미리보기"
-                            className="w-full max-h-64 object-cover rounded-xl border border-gray-200"
+                            className="w-full max-h-64 object-cover border border-gray-200"
                           />
                           {drafts[index].imageUrl!.includes('e_blur_faces:1000') && (
                             <button
                               onClick={() => handleFullBlurDraft(index)}
-                              className="mt-2 text-xs font-bold text-indigo-700 bg-indigo-100 px-3 py-1.5 rounded-lg hover:bg-indigo-200"
+                              className="mt-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 px-3 py-1.5 hover:bg-gray-100"
                             >
-                              🌫️ 얼굴이 덜 가려졌어요 → 사진 전체 블러 처리
+                              얼굴이 덜 가려졌어요 → 사진 전체 블러 처리
                             </button>
                           )}
                         </div>
                       )}
                       <input
-                        className="w-full p-3 border border-gray-200 rounded-xl font-bold text-gray-900 mb-3 focus:border-indigo-500 outline-none"
+                        className="w-full p-3 border border-gray-300 font-bold text-gray-900 mb-3 text-sm outline-none focus:ring-1 focus:ring-gray-900"
                         value={drafts[index].title}
                         onChange={(e) => updateDraft(index, 'title', e.target.value)}
                       />
-                      <textarea 
-                        className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 h-40 focus:border-indigo-500 outline-none leading-relaxed" 
-                        value={drafts[index].content} 
+                      <textarea
+                        className="w-full p-3 border border-gray-300 text-gray-900 h-40 text-sm outline-none focus:ring-1 focus:ring-gray-900 leading-relaxed"
+                        value={drafts[index].content}
                         onChange={(e) => updateDraft(index, 'content', e.target.value)}
                       />
-                      
+
                       <div className="flex justify-end gap-3 mt-4">
                          <button onClick={() => {
                             const newDrafts = {...drafts};
                             delete newDrafts[index];
                             setDrafts(newDrafts);
-                         }} className="px-5 py-2 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200">초안 폐기</button>
-                         <button onClick={() => handlePublish(index)} className="px-6 py-2 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-md flex items-center gap-2">
-                           🚀 메인 뉴스에 발행하기
+                         }} className="px-5 py-2 text-sm font-bold text-gray-500 bg-gray-100 hover:bg-gray-200">초안 폐기</button>
+                         <button onClick={() => handlePublish(index)} className="px-6 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700">
+                           메인 뉴스에 발행하기
                          </button>
                       </div>
                     </div>
